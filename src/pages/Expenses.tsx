@@ -16,7 +16,6 @@ export function Expenses() {
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<any>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');

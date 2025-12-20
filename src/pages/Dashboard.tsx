@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { dashboardApi, dailyExpensesApi, dailyProductionApi, rawMaterialsApi, productionOrdersApi } from '@/services/api';
-import type { DashboardStats, DailyExpense, DailyProduction, RawMaterial, ProductionOrder } from '@/types';
+import type { DashboardStats, DailyExpense, DailyProduction, ProductionOrder } from '@/types';
 import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Calendar } from 'lucide-react';
 import { formatCurrency, getStepLabel, getUnitLabel, formatDate } from '@/lib/utils';
 
@@ -11,7 +11,6 @@ export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
   const [production, setProduction] = useState<DailyProduction[]>([]);
-  const [materials, setMaterials] = useState<RawMaterial[]>([]);
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
@@ -23,7 +22,7 @@ export function Dashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsRes, expensesRes, productionRes, materialsRes, ordersRes] = await Promise.all([
+      const [statsRes, expensesRes, productionRes, , ordersRes] = await Promise.all([
         dashboardApi.getStats(),
         dailyExpensesApi.getAll(),
         dailyProductionApi.getAll(),
@@ -33,7 +32,6 @@ export function Dashboard() {
       setStats(statsRes.data);
       setExpenses(expensesRes.data);
       setProduction(productionRes.data);
-      setMaterials(materialsRes.data);
       setOrders(ordersRes.data);
     } catch (error) {
       console.error('Failed to load dashboard stats:', error);
