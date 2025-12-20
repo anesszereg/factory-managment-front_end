@@ -26,9 +26,9 @@ const api = axios.create({
 export const furnitureModelsApi = {
   getAll: () => api.get<FurnitureModel[]>('/furniture-models'),
   getById: (id: number) => api.get<FurnitureModel>(`/furniture-models/${id}`),
-  create: (data: { name: string; description?: string }) => 
+  create: (data: { name: string; description?: string; size: string }) => 
     api.post<FurnitureModel>('/furniture-models', data),
-  update: (id: number, data: { name?: string; description?: string }) => 
+  update: (id: number, data: { name?: string; description?: string; size?: string }) => 
     api.put<FurnitureModel>(`/furniture-models/${id}`, data),
   delete: (id: number) => api.delete(`/furniture-models/${id}`),
 };

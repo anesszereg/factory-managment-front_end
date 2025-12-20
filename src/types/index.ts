@@ -26,10 +26,19 @@ export enum ExpenseCategory {
   OTHER = 'OTHER'
 }
 
+export enum FurnitureSize {
+  SIZE_45CM = 'SIZE_45CM',
+  SIZE_60CM = 'SIZE_60CM',
+  SIZE_80CM = 'SIZE_80CM',
+  SIZE_100CM = 'SIZE_100CM',
+  SIZE_120CM = 'SIZE_120CM'
+}
+
 export interface FurnitureModel {
   id: number;
   name: string;
   description?: string;
+  size: FurnitureSize;
   createdAt: string;
   updatedAt: string;
 }

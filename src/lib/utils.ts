@@ -51,3 +51,14 @@ export function getUnitLabel(unit: string): string {
   };
   return labels[unit] || unit;
 }
+
+export function getSizeLabel(size: string): string {
+  const labels: Record<string, string> = {
+    SIZE_45CM: '45cm',
+    SIZE_60CM: '60cm',
+    SIZE_80CM: '80cm',
+    SIZE_100CM: '100cm',
+    SIZE_120CM: '120cm',
+  };
+  return labels[size] || size;
+}

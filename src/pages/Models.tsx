@@ -3,11 +3,13 @@ import toast from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { furnitureModelsApi } from '@/services/api';
 import type { FurnitureModel } from '@/types';
-import { Plus, Package } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { FurnitureSize } from '@/types';
+import { Plus, Package, Ruler } from 'lucide-react';
+import { formatDate, getSizeLabel } from '@/lib/utils';
 
 export function Models() {
   const [models, setModels] = useState<FurnitureModel[]>([]);
@@ -40,6 +42,7 @@ export function Models() {
       await furnitureModelsApi.create({
         name: formData.get('name') as string,
         description: formData.get('description') as string || undefined,
+        size: formData.get('size') as FurnitureSize,
       });
       toast.success('Furniture model created successfully!', { id: loadingToast });
       setShowForm(false);
@@ -84,6 +87,19 @@ export function Models() {
                 placeholder="e.g., Oak Dining Table, Modern Sofa"
                 helperText="Enter a descriptive name for the furniture model"
               />
+              <Select
+                label="Size"
+                name="size"
+                required
+                helperText="Select the furniture size"
+              >
+                <option value="">Select size...</option>
+                <option value={FurnitureSize.SIZE_45CM}>45cm</option>
+                <option value={FurnitureSize.SIZE_60CM}>60cm</option>
+                <option value={FurnitureSize.SIZE_80CM}>80cm</option>
+                <option value={FurnitureSize.SIZE_100CM}>100cm</option>
+                <option value={FurnitureSize.SIZE_120CM}>120cm</option>
+              </Select>
               <Textarea
                 label="Description"
                 name="description"
@@ -111,9 +127,16 @@ export function Models() {
                   <Package className="h-8 w-8 text-primary" />
                   <div>
                     <CardTitle className="text-lg">{model.name}</CardTitle>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Added {formatDate(model.createdAt)}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Ruler className="h-3 w-3 text-gray-400" />
+                      <span className="text-xs font-medium text-primary">
+                        {getSizeLabel(model.size)}
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">
+                        Added {formatDate(model.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
