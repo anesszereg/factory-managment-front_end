@@ -3,7 +3,8 @@ import {
   LayoutDashboard, 
   Package, 
   Boxes, 
-  DollarSign, 
+  DollarSign,
+  TrendingUp,
   Factory 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Production', href: '/production', icon: Factory },
     { name: 'Raw Materials', href: '/materials', icon: Boxes },
     { name: 'Expenses', href: '/expenses', icon: DollarSign },
+    { name: 'Incomes', href: '/incomes', icon: TrendingUp },
     { name: 'Models', href: '/models', icon: Package },
   ];
 

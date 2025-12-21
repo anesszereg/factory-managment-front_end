@@ -116,6 +116,26 @@ export interface DailyExpense {
   updatedAt: string;
 }
 
+export enum IncomeSource {
+  PRODUCT_SALES = 'PRODUCT_SALES',
+  SERVICE_REVENUE = 'SERVICE_REVENUE',
+  CUSTOM_ORDERS = 'CUSTOM_ORDERS',
+  REPAIRS = 'REPAIRS',
+  CONSULTING = 'CONSULTING',
+  OTHER = 'OTHER'
+}
+
+export interface Income {
+  id: number;
+  date: string;
+  source: IncomeSource;
+  amount: number;
+  paymentMethod?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DashboardStats {
   date: string;
   production: {

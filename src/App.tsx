@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Production } from './pages/Production';
 import { Materials } from './pages/Materials';
 import { Expenses } from './pages/Expenses';
+import { Incomes } from './pages/Incomes';
 import { Models } from './pages/Models';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
           <Route path="/production" element={<Production />} />
           <Route path="/materials" element={<Materials />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/incomes" element={<Incomes />} />
           <Route path="/models" element={<Models />} />
         </Routes>
       </Layout>

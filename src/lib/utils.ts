@@ -62,3 +62,15 @@ export function getSizeLabel(size: string): string {
   };
   return labels[size] || size;
 }
+
+export function getIncomeSourceLabel(source: string): string {
+  const labels: Record<string, string> = {
+    PRODUCT_SALES: 'Product Sales',
+    SERVICE_REVENUE: 'Service Revenue',
+    CUSTOM_ORDERS: 'Custom Orders',
+    REPAIRS: 'Repairs',
+    CONSULTING: 'Consulting',
+    OTHER: 'Other',
+  };
+  return labels[source] || source;
+}

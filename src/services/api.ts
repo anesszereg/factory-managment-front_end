@@ -6,7 +6,8 @@ import type {
   RawMaterial, 
   MaterialPurchase, 
   MaterialConsumption, 
-  DailyExpense, 
+  DailyExpense,
+  Income,
   DashboardStats, 
   ProductionStatus, 
   ProductionStep, 
@@ -164,6 +165,32 @@ export const dailyExpensesApi = {
   delete: (id: number) => api.delete(`/daily-expenses/${id}`),
   getSummary: (startDate?: string, endDate?: string) => 
     api.get('/daily-expenses/summary', { params: { startDate, endDate } }),
+};
+
+export const incomesApi = {
+  getAll: (filters?: { 
+    source?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<Income[]>('/incomes', { params: filters }),
+  getById: (id: number) => api.get<Income>(`/incomes/${id}`),
+  create: (data: {
+    date?: string;
+    source: string;
+    amount: number;
+    paymentMethod?: string;
+    description?: string;
+  }) => api.post<Income>('/incomes', data),
+  update: (id: number, data: {
+    date?: string;
+    source?: string;
+    amount?: number;
+    paymentMethod?: string;
+    description?: string;
+  }) => api.put<Income>(`/incomes/${id}`, data),
+  delete: (id: number) => api.delete(`/incomes/${id}`),
+  getSummary: (startDate?: string, endDate?: string) => 
+    api.get('/incomes/summary', { params: { startDate, endDate } }),
 };
 
 export const dashboardApi = {
