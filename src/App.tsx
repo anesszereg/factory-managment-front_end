@@ -7,6 +7,8 @@ import { Materials } from './pages/Materials';
 import { Expenses } from './pages/Expenses';
 import { Incomes } from './pages/Incomes';
 import { Models } from './pages/Models';
+import Employees from './pages/Employees';
+import SalaryAllowances from './pages/SalaryAllowances';
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/incomes" element={<Incomes />} />
           <Route path="/models" element={<Models />} />
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/salary-allowances" element={<SalaryAllowances />} />
         </Routes>
       </Layout>
     </Router>

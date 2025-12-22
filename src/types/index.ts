@@ -158,3 +158,39 @@ export interface DashboardStats {
     thisMonth: number;
   };
 }
+
+export enum EmployeeStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  ON_LEAVE = 'ON_LEAVE'
+}
+
+export interface Employee {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  address?: string;
+  hireDate: string;
+  monthlySalary: number;
+  status: EmployeeStatus;
+  createdAt: string;
+  updatedAt: string;
+  salaryAllowances?: SalaryAllowance[];
+}
+
+export interface SalaryAllowance {
+  id: number;
+  employeeId: number;
+  date: string;
+  amount: number;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  employee?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    monthlySalary: number;
+  };
+}
