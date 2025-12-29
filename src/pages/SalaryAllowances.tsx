@@ -325,15 +325,17 @@ const SalaryAllowances: React.FC = () => {
 
             {salaryInfo && (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <div className="text-xs font-medium text-blue-800 mb-1">Salary Cycle Period</div>
-                  <div className="text-sm text-blue-900">
-                    {format(new Date(salaryInfo.salaryCycle.start), 'MMM dd, yyyy')} - {format(new Date(salaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
+                {salaryInfo.salaryCycle && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="text-xs font-medium text-blue-800 mb-1">Salary Cycle Period</div>
+                    <div className="text-sm text-blue-900">
+                      {format(new Date(salaryInfo.salaryCycle.start), 'MMM dd, yyyy')} - {format(new Date(salaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
+                    </div>
+                    <div className="text-xs text-blue-700 mt-1">
+                      Based on hire date: {format(new Date(salaryInfo.salaryCycle.start), 'do')} of each month
+                    </div>
                   </div>
-                  <div className="text-xs text-blue-700 mt-1">
-                    Based on hire date: {format(new Date(salaryInfo.salaryCycle.start), 'do')} of each month
-                  </div>
-                </div>
+                )}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600">Monthly Salary</span>
