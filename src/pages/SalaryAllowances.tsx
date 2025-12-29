@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { salaryAllowancesApi, employeesApi } from '../services/api';
-import { SalaryAllowance, Employee, EmployeeStatus } from '../types';
+import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo } from '../types';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 const SalaryAllowances: React.FC = () => {
@@ -10,7 +10,7 @@ const SalaryAllowances: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<SalaryAllowance | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | ''>('');
-  const [salaryInfo, setSalaryInfo] = useState<any>(null);
+  const [salaryInfo, setSalaryInfo] = useState<EmployeeSalaryInfo | null>(null);
   const [formData, setFormData] = useState({
     employeeId: '',
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -325,6 +325,15 @@ const SalaryAllowances: React.FC = () => {
 
             {salaryInfo && (
               <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <div className="text-xs font-medium text-blue-800 mb-1">Salary Cycle Period</div>
+                  <div className="text-sm text-blue-900">
+                    {format(new Date(salaryInfo.salaryCycle.start), 'MMM dd, yyyy')} - {format(new Date(salaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
+                  </div>
+                  <div className="text-xs text-blue-700 mt-1">
+                    Based on hire date: {format(new Date(salaryInfo.salaryCycle.start), 'do')} of each month
+                  </div>
+                </div>
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm text-gray-600">Monthly Salary</span>
@@ -349,10 +358,10 @@ const SalaryAllowances: React.FC = () => {
                 {salaryInfo.allowances.length > 0 && (
                   <div className="border-t border-gray-200 pt-4">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Recent Allowances
+                      Allowances in Current Cycle
                     </h3>
                     <div className="space-y-2">
-                      {salaryInfo.allowances.slice(0, 5).map((allowance: any) => (
+                      {salaryInfo.allowances.slice(0, 5).map((allowance) => (
                         <div key={allowance.id} className="flex justify-between text-sm">
                           <span className="text-gray-600">
                             {format(new Date(allowance.date), 'MMM dd')}
