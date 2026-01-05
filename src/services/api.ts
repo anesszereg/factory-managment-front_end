@@ -12,7 +12,10 @@ import type {
   ProductionStatus, 
   ProductionStep, 
   MaterialUnit, 
-  ExpenseCategory 
+  ExpenseCategory,
+  Employee,
+  SalaryAllowance,
+  EmployeeStatus
 } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api';
@@ -196,6 +199,59 @@ export const incomesApi = {
 export const dashboardApi = {
   getStats: (date?: string) => 
     api.get<DashboardStats>('/dashboard/stats', { params: { date } }),
+};
+
+export const employeesApi = {
+  getAll: (filters?: { 
+    status?: EmployeeStatus;
+  }) => api.get<Employee[]>('/employees', { params: filters }),
+  getById: (id: number) => api.get<Employee>(`/employees/${id}`),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    address?: string;
+    hireDate: string;
+    monthlySalary: number;
+    status?: EmployeeStatus;
+  }) => api.post<Employee>('/employees', data),
+  update: (id: number, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    address?: string;
+    hireDate?: string;
+    monthlySalary?: number;
+    status?: EmployeeStatus;
+  }) => api.put<Employee>(`/employees/${id}`, data),
+  delete: (id: number) => api.delete(`/employees/${id}`),
+  getSalaryInfo: (id: number, month?: string) => 
+    api.get(`/employees/${id}/salary-info`, { params: { month } }),
+  getSalarySummary: (month?: string) => 
+    api.get('/employees/salary-summary', { params: { month } }),
+};
+
+export const salaryAllowancesApi = {
+  getAll: (filters?: { 
+    employeeId?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<SalaryAllowance[]>('/salary-allowances', { params: filters }),
+  getById: (id: number) => api.get<SalaryAllowance>(`/salary-allowances/${id}`),
+  create: (data: {
+    employeeId: number;
+    date?: string;
+    amount: number;
+    description?: string;
+  }) => api.post<SalaryAllowance>('/salary-allowances', data),
+  update: (id: number, data: {
+    date?: string;
+    amount?: number;
+    description?: string;
+  }) => api.put<SalaryAllowance>(`/salary-allowances/${id}`, data),
+  delete: (id: number) => api.delete(`/salary-allowances/${id}`),
+  getSummary: (startDate?: string, endDate?: string) => 
+    api.get('/salary-allowances/summary', { params: { startDate, endDate } }),
 };
 
 export default api;

@@ -5,7 +5,9 @@ import {
   Boxes, 
   DollarSign,
   TrendingUp,
-  Factory 
+  Factory,
+  Users,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +25,8 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Expenses', href: '/expenses', icon: DollarSign },
     { name: 'Incomes', href: '/incomes', icon: TrendingUp },
     { name: 'Models', href: '/models', icon: Package },
+    { name: 'Employees', href: '/employees', icon: Users },
+    { name: 'Salary Allowances', href: '/salary-allowances', icon: Wallet },
   ];
 
   return (
