@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { salaryAllowancesApi, employeesApi } from '../services/api';
 import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo } from '../types';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 const SalaryAllowances: React.FC = () => {
   const [allowances, setAllowances] = useState<SalaryAllowance[]>([]);
@@ -11,6 +11,9 @@ const SalaryAllowances: React.FC = () => {
   const [editingAllowance, setEditingAllowance] = useState<SalaryAllowance | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | ''>('');
   const [salaryInfo, setSalaryInfo] = useState<EmployeeSalaryInfo | null>(null);
+  const [filterEmployeeId, setFilterEmployeeId] = useState<number | ''>('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   const [formData, setFormData] = useState({
     employeeId: '',
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -21,7 +24,7 @@ const SalaryAllowances: React.FC = () => {
   useEffect(() => {
     fetchEmployees();
     fetchAllowances();
-  }, []);
+  }, [filterEmployeeId, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     if (selectedEmployee) {
@@ -41,16 +44,45 @@ const SalaryAllowances: React.FC = () => {
   const fetchAllowances = async () => {
     try {
       setLoading(true);
-      const response = await salaryAllowancesApi.getAll({
-        startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-        endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
-      });
+      const filters: any = {};
+      
+      if (filterEmployeeId) {
+        filters.employeeId = filterEmployeeId;
+      }
+      
+      if (filterStartDate) {
+        filters.startDate = filterStartDate;
+      }
+      
+      if (filterEndDate) {
+        filters.endDate = filterEndDate;
+      }
+      
+      const response = await salaryAllowancesApi.getAll(filters);
       setAllowances(response.data);
     } catch (error) {
       console.error('Error fetching allowances:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearFilters = () => {
+    setFilterEmployeeId('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+  };
+
+  const handleSetLastMonth = () => {
+    const now = new Date();
+    setFilterStartDate(format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd'));
+    setFilterEndDate(format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd'));
+  };
+
+  const handleSetCurrentMonth = () => {
+    const now = new Date();
+    setFilterStartDate(format(startOfMonth(now), 'yyyy-MM-dd'));
+    setFilterEndDate(format(endOfMonth(now), 'yyyy-MM-dd'));
   };
 
   const fetchSalaryInfo = async (employeeId: number) => {
@@ -143,6 +175,74 @@ const SalaryAllowances: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Filter Allowances</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Employee
+                </label>
+                <select
+                  value={filterEmployeeId}
+                  onChange={(e) => setFilterEmployeeId(e.target.value ? parseInt(e.target.value) : '')}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                >
+                  <option value="">All Employees</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.firstName} {emp.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleSetCurrentMonth}
+                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition text-sm"
+              >
+                Current Month
+              </button>
+              <button
+                onClick={handleSetLastMonth}
+                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition text-sm"
+              >
+                Last Month
+              </button>
+              <button
+                onClick={handleClearFilters}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition text-sm"
+              >
+                Clear Filters
+              </button>
+              <div className="ml-auto text-sm text-gray-600 flex items-center">
+                Showing {allowances.length} allowance{allowances.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+
           {showForm && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">
@@ -226,7 +326,7 @@ const SalaryAllowances: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-800">
-                Allowances This Month
+                Allowances History
               </h2>
             </div>
             <div className="overflow-x-auto">
@@ -293,7 +393,7 @@ const SalaryAllowances: React.FC = () => {
               </table>
               {allowances.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                  No allowances recorded this month.
+                  No allowances found. {(filterEmployeeId || filterStartDate || filterEndDate) ? 'Try adjusting your filters.' : 'Add your first allowance to get started.'}
                 </div>
               )}
             </div>
