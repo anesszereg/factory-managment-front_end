@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi } from '@/services/api';
 import type { RawMaterial, MaterialPurchase, MaterialConsumption } from '@/types';
 import { MaterialUnit } from '@/types';
@@ -27,6 +28,10 @@ export function Materials() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showConsumptionHistory, setShowConsumptionHistory] = useState(false);
+  const [consumptionFilterMaterial, setConsumptionFilterMaterial] = useState<number | ''>('');
+  const [consumptionStartDate, setConsumptionStartDate] = useState('');
+  const [consumptionEndDate, setConsumptionEndDate] = useState('');
 
   useEffect(() => {
     loadData();
@@ -280,6 +285,10 @@ export function Materials() {
           </p>
         </div>
         <div className="flex space-x-3">
+          <Button onClick={() => setShowConsumptionHistory(true)} variant="outline">
+            <TrendingDown className="h-4 w-4 mr-2" />
+            View History
+          </Button>
           <Button onClick={() => {
             setEditingConsumption(null);
             setShowConsumptionForm(!showConsumptionForm);
@@ -496,13 +505,15 @@ export function Materials() {
         </Card>
       )}
 
-      {showPurchaseForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingPurchase ? 'Edit Purchase' : 'Record Purchase'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreatePurchase} className="space-y-4">
+      <Dialog open={showPurchaseForm} onOpenChange={setShowPurchaseForm}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowPurchaseForm(false);
+            setEditingPurchase(null);
+          }}>
+            <DialogTitle>{editingPurchase ? 'Edit Purchase' : 'Record Purchase'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreatePurchase} className="space-y-4">
               <Select
                 label="Material"
                 name="materialId"
@@ -570,17 +581,18 @@ export function Materials() {
                 <Button type="submit">{editingPurchase ? 'Update Purchase' : 'Record Purchase'}</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {showConsumptionForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingConsumption ? 'Edit Consumption' : 'Record Consumption'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateConsumption} className="space-y-4">
+      <Dialog open={showConsumptionForm} onOpenChange={setShowConsumptionForm}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowConsumptionForm(false);
+            setEditingConsumption(null);
+          }}>
+            <DialogTitle>{editingConsumption ? 'Edit Consumption' : 'Record Consumption'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateConsumption} className="space-y-4">
               <Select
                 label="Material"
                 name="materialId"
@@ -634,9 +646,8 @@ export function Materials() {
                 <Button type="submit">{editingConsumption ? 'Update Consumption' : 'Record Consumption'}</Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1 space-y-4">
@@ -969,6 +980,174 @@ export function Materials() {
           )}
         </div>
       </div>
+
+      <Dialog open={showConsumptionHistory} onOpenChange={setShowConsumptionHistory}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader onClose={() => setShowConsumptionHistory(false)}>
+            <DialogTitle>Consumption History</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Material</label>
+                    <Select
+                      value={consumptionFilterMaterial}
+                      onChange={(e) => setConsumptionFilterMaterial(e.target.value ? parseInt(e.target.value) : '')}
+                    >
+                      <option value="">All Materials</option>
+                      {materials.map((material) => (
+                        <option key={material.id} value={material.id}>
+                          {material.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <Input
+                      type="date"
+                      value={consumptionStartDate}
+                      onChange={(e) => setConsumptionStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <Input
+                      type="date"
+                      value={consumptionEndDate}
+                      onChange={(e) => setConsumptionEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setConsumptionFilterMaterial('');
+                      setConsumptionStartDate('');
+                      setConsumptionEndDate('');
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                  <div className="ml-auto text-sm text-gray-600 flex items-center">
+                    Showing {consumption.filter(c => {
+                      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+                      return matchesMaterial && matchesDate;
+                    }).length} records
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-4">
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Material
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Notes
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {consumption
+                        .filter(c => {
+                          const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                          const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                                             (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+                          return matchesMaterial && matchesDate;
+                        })
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((cons) => {
+                          const material = materials.find(m => m.id === cons.materialId);
+                          return (
+                            <tr key={cons.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {formatDate(cons.date)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-xl mr-2">{material ? getMaterialIcon(material.name) : '📦'}</span>
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {material?.name || 'Unknown'}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {material ? getUnitLabel(material.unit) : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-sm font-semibold text-red-600">
+                                  -{cons.quantity} {material ? getUnitLabel(material.unit) : ''}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                {cons.notes || '-'}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingConsumption(cons);
+                                      setShowConsumptionForm(true);
+                                      setShowConsumptionHistory(false);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteConsumption(cons.id)}
+                                    className="text-red-600 hover:text-red-900"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                  {consumption.filter(c => {
+                    const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                    const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                                       (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+                    return matchesMaterial && matchesDate;
+                  }).length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      {consumption.length === 0 ? 'No consumption records yet' : 'No records match the selected filters'}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
