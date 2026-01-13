@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
 import { productionOrdersApi, dailyProductionApi, furnitureModelsApi } from '@/services/api';
 import type { ProductionOrder, DailyProduction, FurnitureModel } from '@/types';
 import { ProductionStatus, ProductionStep } from '@/types';
-import { Plus, CheckCircle2, Circle, Clock, ArrowRight, Package, Edit2, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Clock, ArrowRight, Package, Edit2, Trash2, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 import { formatDate, getStepLabel } from '@/lib/utils';
 
 export function Production() {
@@ -177,6 +178,28 @@ export function Production() {
     return 'pending';
   };
 
+  const calculateStatistics = () => {
+    const totalOrders = orders.length;
+    const activeOrders = orders.filter(o => o.status === ProductionStatus.IN_PROGRESS).length;
+    const completedOrders = orders.filter(o => o.status === ProductionStatus.FINISHED).length;
+    const totalUnitsOrdered = orders.reduce((sum, o) => sum + o.quantity, 0);
+    const totalUnitsCompleted = orders.filter(o => o.status === ProductionStatus.FINISHED).reduce((sum, o) => sum + o.quantity, 0);
+    const totalUnitsLost = dailyProduction.reduce((sum, p) => sum + p.quantityLost, 0);
+    const completionRate = totalUnitsOrdered > 0 ? Math.round((totalUnitsCompleted / totalUnitsOrdered) * 100) : 0;
+    
+    return {
+      totalOrders,
+      activeOrders,
+      completedOrders,
+      totalUnitsOrdered,
+      totalUnitsCompleted,
+      totalUnitsLost,
+      completionRate,
+    };
+  };
+
+  const stats = calculateStatistics();
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -193,14 +216,14 @@ export function Production() {
         <div className="flex space-x-3">
           <Button onClick={() => {
             setEditingProduction(null);
-            setShowProductionForm(!showProductionForm);
+            setShowProductionForm(true);
           }}>
             <Plus className="h-4 w-4 mr-2" />
             Record Production
           </Button>
           <Button onClick={() => {
             setEditingOrder(null);
-            setShowOrderForm(!showOrderForm);
+            setShowOrderForm(true);
           }}>
             <Plus className="h-4 w-4 mr-2" />
             New Order
@@ -208,168 +231,232 @@ export function Production() {
         </div>
       </div>
 
-      {showOrderForm && (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>{editingOrder ? 'Edit Production Order' : 'Create Production Order'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateOrder} className="space-y-4">
-              <Select
-                label="Model"
-                name="modelId"
-                required
-                disabled={!!editingOrder}
-                defaultValue={editingOrder?.modelId}
-                helperText="Select the furniture model to produce"
-              >
-                <option value="">Select a model</option>
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Quantity"
-                type="number"
-                name="quantity"
-                required
-                min="1"
-                placeholder="Enter quantity"
-                defaultValue={editingOrder?.quantity}
-                helperText="Number of units to produce"
-              />
-              <Input
-                label="Start Date"
-                type="date"
-                name="startDate"
-                required
-                disabled={!!editingOrder}
-                defaultValue={editingOrder ? editingOrder.startDate.split('T')[0] : new Date().toISOString().split('T')[0]}
-                helperText="When production should begin"
-              />
-              {editingOrder && (
-                <Select
-                  label="Status"
-                  name="status"
-                  required
-                  defaultValue={editingOrder.status}
-                  helperText="Update order status"
-                >
-                  <option value={ProductionStatus.IN_PROGRESS}>In Progress</option>
-                  <option value={ProductionStatus.FINISHED}>Finished</option>
-                </Select>
-              )}
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowOrderForm(false);
-                  setEditingOrder(null);
-                }}>
-                  Cancel
-                </Button>
-                <Button type="submit">{editingOrder ? 'Update Order' : 'Create Order'}</Button>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalOrders}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.activeOrders} active</p>
               </div>
-            </form>
+              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Package className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
           </CardContent>
         </Card>
-      )}
 
-      {showProductionForm && (
         <Card>
-          <CardHeader>
-            <CardTitle>{editingProduction ? 'Edit Production Record' : 'Record Daily Production'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateProduction} className="space-y-4">
-              <Select
-                label="Production Order"
-                name="orderId"
-                required
-                disabled={!!editingProduction}
-                defaultValue={editingProduction?.orderId}
-                helperText="Select the production order to record"
-              >
-                <option value="">Select an order</option>
-                {orders.filter(o => o.status === ProductionStatus.IN_PROGRESS).map((order) => (
-                  <option key={order.id} value={order.id}>
-                    #{order.id} - {order.model?.name} ({order.quantity} units)
-                  </option>
-                ))}
-              </Select>
-              <Select
-                label="Production Step"
-                name="step"
-                required
-                disabled={!!editingProduction}
-                defaultValue={editingProduction?.step}
-                helperText="Which production step is being recorded"
-              >
-                <option value="">Select a step</option>
-                {Object.values(ProductionStep).map((step) => (
-                  <option key={step} value={step}>
-                    {getStepLabel(step)}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                label="Date"
-                type="date"
-                name="date"
-                required
-                disabled={!!editingProduction}
-                defaultValue={editingProduction ? editingProduction.date.split('T')[0] : new Date().toISOString().split('T')[0]}
-                helperText="Date of production activity"
-              />
-              <div className="grid grid-cols-3 gap-4">
-                <Input
-                  label="Quantity Entered"
-                  type="number"
-                  name="quantityEntered"
-                  required
-                  min="0"
-                  placeholder="0"
-                  defaultValue={editingProduction?.quantityEntered}
-                />
-                <Input
-                  label="Quantity Completed"
-                  type="number"
-                  name="quantityCompleted"
-                  required
-                  min="0"
-                  placeholder="0"
-                  defaultValue={editingProduction?.quantityCompleted}
-                />
-                <Input
-                  label="Quantity Lost"
-                  type="number"
-                  name="quantityLost"
-                  min="0"
-                  defaultValue={editingProduction?.quantityLost || 0}
-                  placeholder="0"
-                />
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Completed Orders</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completedOrders}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsCompleted} units</p>
               </div>
-              <Textarea
-                label="Notes"
-                name="notes"
-                rows={3}
-                placeholder="Add any notes about this production..."
-                defaultValue={editingProduction?.notes || ''}
-                helperText="Optional: Record any issues or observations"
-              />
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => {
-                  setShowProductionForm(false);
-                  setEditingProduction(null);
-                }}>
-                  Cancel
-                </Button>
-                <Button type="submit">{editingProduction ? 'Update Production' : 'Record Production'}</Button>
+              <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completionRate}%</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsCompleted} / {stats.totalUnitsOrdered} units</p>
+              </div>
+              <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Units Lost</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUnitsLost}</p>
+                <p className="text-xs text-gray-500 mt-1">Across all production</p>
+              </div>
+              <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowOrderForm(false);
+            setEditingOrder(null);
+          }}>
+            <DialogTitle>{editingOrder ? 'Edit Production Order' : 'Create Production Order'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateOrder} className="space-y-4">
+            <Select
+              label="Model"
+              name="modelId"
+              required
+              disabled={!!editingOrder}
+              defaultValue={editingOrder?.modelId}
+              helperText="Select the furniture model to produce"
+            >
+              <option value="">Select a model</option>
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label="Quantity"
+              type="number"
+              name="quantity"
+              required
+              min="1"
+              placeholder="Enter quantity"
+              defaultValue={editingOrder?.quantity}
+              helperText="Number of units to produce"
+            />
+            <Input
+              label="Start Date"
+              type="date"
+              name="startDate"
+              required
+              disabled={!!editingOrder}
+              defaultValue={editingOrder ? editingOrder.startDate.split('T')[0] : new Date().toISOString().split('T')[0]}
+              helperText="When production should begin"
+            />
+            {editingOrder && (
+              <Select
+                label="Status"
+                name="status"
+                required
+                defaultValue={editingOrder.status}
+                helperText="Update order status"
+              >
+                <option value={ProductionStatus.IN_PROGRESS}>In Progress</option>
+                <option value={ProductionStatus.FINISHED}>Finished</option>
+              </Select>
+            )}
+            <div className="flex justify-end space-x-3">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowOrderForm(false);
+                setEditingOrder(null);
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit">{editingOrder ? 'Update Order' : 'Create Order'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showProductionForm} onOpenChange={setShowProductionForm}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowProductionForm(false);
+            setEditingProduction(null);
+          }}>
+            <DialogTitle>{editingProduction ? 'Edit Production Record' : 'Record Daily Production'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateProduction} className="space-y-4">
+            <Select
+              label="Production Order"
+              name="orderId"
+              required
+              disabled={!!editingProduction}
+              defaultValue={editingProduction?.orderId}
+              helperText="Select the production order to record"
+            >
+              <option value="">Select an order</option>
+              {orders.filter(o => o.status === ProductionStatus.IN_PROGRESS).map((order) => (
+                <option key={order.id} value={order.id}>
+                  #{order.id} - {order.model?.name} ({order.quantity} units)
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Production Step"
+              name="step"
+              required
+              disabled={!!editingProduction}
+              defaultValue={editingProduction?.step}
+              helperText="Which production step is being recorded"
+            >
+              <option value="">Select a step</option>
+              {Object.values(ProductionStep).map((step) => (
+                <option key={step} value={step}>
+                  {getStepLabel(step)}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label="Date"
+              type="date"
+              name="date"
+              required
+              disabled={!!editingProduction}
+              defaultValue={editingProduction ? editingProduction.date.split('T')[0] : new Date().toISOString().split('T')[0]}
+              helperText="Date of production activity"
+            />
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="Quantity Entered"
+                type="number"
+                name="quantityEntered"
+                required
+                min="0"
+                placeholder="0"
+                defaultValue={editingProduction?.quantityEntered}
+              />
+              <Input
+                label="Quantity Completed"
+                type="number"
+                name="quantityCompleted"
+                required
+                min="0"
+                placeholder="0"
+                defaultValue={editingProduction?.quantityCompleted}
+              />
+              <Input
+                label="Quantity Lost"
+                type="number"
+                name="quantityLost"
+                min="0"
+                defaultValue={editingProduction?.quantityLost || 0}
+                placeholder="0"
+              />
+            </div>
+            <Textarea
+              label="Notes"
+              name="notes"
+              rows={3}
+              placeholder="Add any notes about this production..."
+              defaultValue={editingProduction?.notes || ''}
+              helperText="Optional: Record any issues or observations"
+            />
+            <div className="flex justify-end space-x-3">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowProductionForm(false);
+                setEditingProduction(null);
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit">{editingProduction ? 'Update Production' : 'Record Production'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1">
