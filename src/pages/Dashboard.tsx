@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { dashboardApi, dailyExpensesApi, dailyProductionApi, rawMaterialsApi, productionOrdersApi } from '@/services/api';
-import type { DashboardStats, DailyExpense, DailyProduction, ProductionOrder } from '@/types';
-import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Calendar } from 'lucide-react';
+import { dashboardApi, dailyExpensesApi, dailyProductionApi, rawMaterialsApi, productionOrdersApi, salaryAllowancesApi, employeesApi } from '@/services/api';
+import type { DashboardStats, DailyExpense, DailyProduction, ProductionOrder, SalaryAllowance, Employee } from '@/types';
+import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Calendar, Users, Wallet } from 'lucide-react';
 import { formatCurrency, getStepLabel, getUnitLabel, formatDate } from '@/lib/utils';
 
 export function Dashboard() {
@@ -12,6 +12,8 @@ export function Dashboard() {
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
   const [production, setProduction] = useState<DailyProduction[]>([]);
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const [allowances, setAllowances] = useState<SalaryAllowance[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -22,17 +24,21 @@ export function Dashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsRes, expensesRes, productionRes, , ordersRes] = await Promise.all([
+      const [statsRes, expensesRes, productionRes, , ordersRes, allowancesRes, employeesRes] = await Promise.all([
         dashboardApi.getStats(),
         dailyExpensesApi.getAll(),
         dailyProductionApi.getAll(),
         rawMaterialsApi.getAll(),
         productionOrdersApi.getAll(),
+        salaryAllowancesApi.getAll(),
+        employeesApi.getAll({ status: 'ACTIVE' as any }),
       ]);
       setStats(statsRes.data);
       setExpenses(expensesRes.data);
       setProduction(productionRes.data);
       setOrders(ordersRes.data);
+      setAllowances(allowancesRes.data);
+      setEmployees(employeesRes.data);
     } catch (error) {
       console.error('Failed to load dashboard stats:', error);
     } finally {
@@ -88,36 +94,44 @@ export function Dashboard() {
     return acc;
   }, {} as Record<string, { completed: number; entered: number; lost: number }>);
 
+  const filteredAllowances = allowances.filter(a => filterByDateRange(a.date));
+  const totalAllowancesPaid = filteredAllowances.reduce((sum, a) => sum + a.amount, 0);
+  const totalMonthlySalaries = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
+  const remainingSalaryBudget = totalMonthlySalaries - totalAllowancesPaid;
+  const averageAllowancePerEmployee = employees.length > 0 ? totalAllowancesPaid / employees.length : 0;
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Overview of production, materials, and expenses
           </p>
         </div>
-        <Calendar className="h-8 w-8 text-blue-500" />
+        <Calendar className="hidden sm:block h-8 w-8 text-blue-500" />
       </div>
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range Filter</label>
-              <div className="flex gap-3 items-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   placeholder="Start date"
+                  className="w-full sm:w-auto"
                 />
-                <span className="text-gray-500">to</span>
+                <span className="text-gray-500 hidden sm:inline">to</span>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   placeholder="End date"
+                  className="w-full sm:w-auto"
                 />
                 {(startDate || endDate) && (
                   <Button
@@ -126,6 +140,7 @@ export function Dashboard() {
                       setStartDate('');
                       setEndDate('');
                     }}
+                    className="w-full sm:w-auto"
                   >
                     Clear
                   </Button>
@@ -153,7 +168,7 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -220,7 +235,84 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Card className="bg-gradient-to-r from-purple-50 to-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center text-purple-900">
+            <Wallet className="h-5 w-5 mr-2" />
+            Employee Benefits & Salaries {startDate || endDate ? '(Filtered)' : ''}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-600">Active Employees</p>
+                <Users className="h-4 w-4 text-blue-500" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{employees.length}</p>
+              <p className="text-xs text-gray-500 mt-1">Total workforce</p>
+            </div>
+            
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-600">Total Salary Budget</p>
+                <DollarSign className="h-4 w-4 text-green-500" />
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalMonthlySalaries)}</p>
+              <p className="text-xs text-gray-500 mt-1">Monthly budget</p>
+            </div>
+            
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-600">Allowances Paid</p>
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </div>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(totalAllowancesPaid)}</p>
+              <p className="text-xs text-gray-500 mt-1">{filteredAllowances.length} transactions</p>
+            </div>
+            
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-600">Remaining Budget</p>
+                <CheckCircle className="h-4 w-4 text-purple-500" />
+              </div>
+              <p className="text-2xl font-bold text-purple-600">{formatCurrency(remainingSalaryBudget)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {totalMonthlySalaries > 0 ? `${((remainingSalaryBudget / totalMonthlySalaries) * 100).toFixed(1)}% remaining` : 'N/A'}
+              </p>
+            </div>
+          </div>
+          
+          {employees.length > 0 && (
+            <div className="mt-4 p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-700">Salary Utilization</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {totalMonthlySalaries > 0 ? `${((totalAllowancesPaid / totalMonthlySalaries) * 100).toFixed(1)}%` : '0%'}
+                </p>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className={`h-3 rounded-full transition-all ${
+                    totalMonthlySalaries > 0 && (totalAllowancesPaid / totalMonthlySalaries) > 0.9
+                      ? 'bg-red-500'
+                      : totalMonthlySalaries > 0 && (totalAllowancesPaid / totalMonthlySalaries) > 0.7
+                      ? 'bg-yellow-500'
+                      : 'bg-green-500'
+                  }`}
+                  style={{ width: `${totalMonthlySalaries > 0 ? Math.min((totalAllowancesPaid / totalMonthlySalaries) * 100, 100) : 0}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-gray-500">
+                <span>Average per employee: {formatCurrency(averageAllowancePerEmployee)}</span>
+                <span>{filteredAllowances.length} allowance records</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -302,7 +394,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

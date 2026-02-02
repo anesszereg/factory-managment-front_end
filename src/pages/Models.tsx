@@ -59,14 +59,14 @@ export function Models() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Furniture Models</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Furniture Models</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Manage furniture product models
           </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
+        <Button className="w-full sm:w-auto" onClick={() => setShowForm(!showForm)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Model
         </Button>
@@ -118,7 +118,7 @@ export function Models() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {models.map((model) => (
           <Card key={model.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>

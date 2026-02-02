@@ -137,14 +137,14 @@ export function Expenses() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Daily Expenses</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Daily Expenses</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Track and manage daily operational expenses
           </p>
         </div>
-        <Button onClick={() => {
+        <Button className="w-full sm:w-auto" onClick={() => {
           setEditingExpense(null);
           setShowForm(!showForm);
         }}>
@@ -156,22 +156,24 @@ export function Expenses() {
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Date Range Filter</label>
-                <div className="flex gap-3 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                   <Input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     placeholder="Start date"
+                    className="w-full sm:w-auto"
                   />
-                  <span className="text-gray-500">to</span>
+                  <span className="text-gray-500 hidden sm:inline">to</span>
                   <Input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     placeholder="End date"
+                    className="w-full sm:w-auto"
                   />
                 </div>
               </div>
@@ -189,7 +191,7 @@ export function Expenses() {
                 )}
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -230,7 +232,7 @@ export function Expenses() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -358,7 +360,7 @@ export function Expenses() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -440,77 +442,115 @@ export function Expenses() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Expenses {startDate || endDate || filterCategory !== 'all' || filterPayment !== 'all' ? '(Filtered)' : ''}</CardTitle>
+          <CardTitle className="text-lg sm:text-xl">All Expenses {startDate || endDate || filterCategory !== 'all' || filterPayment !== 'all' ? '(Filtered)' : ''}</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredExpenses.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">No expenses match the selected filters</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredExpenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(expense.date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {getCategoryLabel(expense.category)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                        {formatCurrency(expense.amount)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {expense.paymentMethod || '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {expense.description || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleEdit(expense)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(expense.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+            <>
+              {/* Mobile Card View */}
+              <div className="block md:hidden space-y-3">
+                {filteredExpenses.map((expense) => (
+                  <div key={expense.id} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-medium text-gray-900">{getCategoryLabel(expense.category)}</p>
+                        <p className="text-xs text-gray-500">{formatDate(expense.date)}</p>
+                      </div>
+                      <p className="text-lg font-semibold text-red-600">{formatCurrency(expense.amount)}</p>
+                    </div>
+                    {expense.paymentMethod && (
+                      <p className="text-xs text-gray-500 mb-1">Payment: {expense.paymentMethod}</p>
+                    )}
+                    {expense.description && (
+                      <p className="text-sm text-gray-600 mb-2">{expense.description}</p>
+                    )}
+                    <div className="flex gap-4 pt-2 border-t border-gray-200">
+                      <button
+                        onClick={() => handleEdit(expense)}
+                        className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(expense.id)}
+                        className="text-red-600 hover:text-red-900 text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Description
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredExpenses.map((expense) => (
+                      <tr key={expense.id} className="hover:bg-gray-50">
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(expense.date)}
+                        </td>
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {getCategoryLabel(expense.category)}
+                        </td>
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                          {formatCurrency(expense.amount)}
+                        </td>
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {expense.paymentMethod || '-'}
+                        </td>
+                        <td className="px-4 lg:px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                          {expense.description || '-'}
+                        </td>
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEdit(expense)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Edit"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(expense.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

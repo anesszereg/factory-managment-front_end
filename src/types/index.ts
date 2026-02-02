@@ -98,11 +98,23 @@ export interface MaterialConsumption {
   quantity: number;
   orderId?: number;
   step?: ProductionStep;
+  employeeId?: number;
+  pieceWorkerId?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;
   material?: RawMaterial;
   order?: ProductionOrder;
+  employee?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  pieceWorker?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface DailyExpense {
@@ -211,4 +223,51 @@ export interface EmployeeSalaryInfo {
   totalAllowances: number;
   remainingSalary: number;
   allowances: SalaryAllowance[];
+}
+
+export enum PieceWorkerStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}
+
+export interface PieceWorker {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  pricePerPiece: number;
+  status: PieceWorkerStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum PaymentStatus {
+  NOT_PAID = 'NOT_PAID',
+  PART_PAID = 'PART_PAID',
+  PAID = 'PAID'
+}
+
+export interface ReceiptItem {
+  id: number;
+  receiptId: number;
+  itemName: string;
+  quantity: number;
+  pricePerPiece: number;
+  totalPrice: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyPieceReceipt {
+  id: number;
+  pieceWorkerId: number;
+  date: string;
+  totalAmount: number;
+  paidAmount: number;
+  paymentStatus: PaymentStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  pieceWorker?: PieceWorker;
+  items?: ReceiptItem[];
 }

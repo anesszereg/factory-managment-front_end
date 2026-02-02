@@ -11,6 +11,7 @@ const SalaryAllowances: React.FC = () => {
   const [editingAllowance, setEditingAllowance] = useState<SalaryAllowance | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | ''>('');
   const [salaryInfo, setSalaryInfo] = useState<EmployeeSalaryInfo | null>(null);
+  const [lastMonthSalaryInfo, setLastMonthSalaryInfo] = useState<EmployeeSalaryInfo | null>(null);
   const [filterEmployeeId, setFilterEmployeeId] = useState<number | ''>('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -87,8 +88,14 @@ const SalaryAllowances: React.FC = () => {
 
   const fetchSalaryInfo = async (employeeId: number) => {
     try {
-      const response = await employeesApi.getSalaryInfo(employeeId);
-      setSalaryInfo(response.data);
+      // Fetch current month salary info
+      const currentResponse = await employeesApi.getSalaryInfo(employeeId);
+      setSalaryInfo(currentResponse.data);
+      
+      // Fetch last month salary info
+      const lastMonth = subMonths(new Date(), 1);
+      const lastMonthResponse = await employeesApi.getSalaryInfo(employeeId, format(lastMonth, 'yyyy-MM-dd'));
+      setLastMonthSalaryInfo(lastMonthResponse.data);
     } catch (error) {
       console.error('Error fetching salary info:', error);
     }
@@ -162,22 +169,22 @@ const SalaryAllowances: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Salary Allowances</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Salary Allowances</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
         >
           {showForm ? 'Cancel' : '+ Add Allowance'}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Filter Allowances</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Filter Allowances</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Employee
@@ -244,8 +251,8 @@ const SalaryAllowances: React.FC = () => {
           </div>
 
           {showForm && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4">
                 {editingAllowance ? 'Edit Allowance' : 'Add New Allowance'}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -304,7 +311,7 @@ const SalaryAllowances: React.FC = () => {
                     rows={3}
                   />
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <button
                     type="submit"
                     className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -324,28 +331,73 @@ const SalaryAllowances: React.FC = () => {
           )}
 
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-800">
                 Allowances History
               </h2>
             </div>
-            <div className="overflow-x-auto">
+            
+            {/* Mobile Card View */}
+            <div className="block md:hidden p-4 space-y-3">
+              {allowances.map((allowance) => (
+                <div key={allowance.id} className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {allowance.employee?.firstName} {allowance.employee?.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(allowance.date), 'MMM dd, yyyy')}
+                      </p>
+                    </div>
+                    <p className="text-lg font-semibold text-green-600">
+                      ${allowance.amount.toFixed(2)}
+                    </p>
+                  </div>
+                  {allowance.description && (
+                    <p className="text-sm text-gray-600 mb-2">{allowance.description}</p>
+                  )}
+                  <div className="flex gap-4 pt-2 border-t border-gray-200">
+                    <button
+                      onClick={() => handleEdit(allowance)}
+                      className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(allowance.id)}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {allowances.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No allowances found. {(filterEmployeeId || filterStartDate || filterEndDate) ? 'Try adjusting your filters.' : 'Add your first allowance to get started.'}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Employee
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -353,27 +405,27 @@ const SalaryAllowances: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {allowances.map((allowance) => (
                     <tr key={allowance.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {format(new Date(allowance.date), 'MMM dd, yyyy')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {allowance.employee?.firstName} {allowance.employee?.lastName}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-green-600">
                           ${allowance.amount.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-4 lg:px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate">
                           {allowance.description || '-'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEdit(allowance)}
                           className="text-blue-600 hover:text-blue-900 mr-4"
@@ -401,7 +453,7 @@ const SalaryAllowances: React.FC = () => {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Employee Salary Info
             </h2>
@@ -425,55 +477,99 @@ const SalaryAllowances: React.FC = () => {
 
             {salaryInfo && (
               <div className="space-y-4">
-                {salaryInfo.salaryCycle && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <div className="text-xs font-medium text-blue-800 mb-1">Salary Cycle Period</div>
-                    <div className="text-sm text-blue-900">
-                      {format(new Date(salaryInfo.salaryCycle.start), 'MMM dd, yyyy')} - {format(new Date(salaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
+                {/* Current Month Section */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="text-xs font-bold text-blue-800 mb-2 uppercase">Current Month</div>
+                  {salaryInfo.salaryCycle && (
+                    <div className="text-xs text-blue-700 mb-2">
+                      {format(new Date(salaryInfo.salaryCycle.start), 'MMM dd')} - {format(new Date(salaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
                     </div>
-                    <div className="text-xs text-blue-700 mt-1">
-                      Based on hire date: {format(new Date(salaryInfo.salaryCycle.start), 'do')} of each month
+                  )}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600">Monthly Salary</span>
+                      <span className="text-sm font-bold text-gray-900">
+                        ${salaryInfo.employee.monthlySalary.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-600">Allowances</span>
+                      <span className="text-sm font-semibold text-red-600">
+                        -${salaryInfo.totalAllowances.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-blue-200">
+                      <span className="text-xs font-medium text-gray-700">Remaining</span>
+                      <span className="text-lg font-bold text-green-600">
+                        ${salaryInfo.remainingSalary.toFixed(2)}
+                      </span>
                     </div>
                   </div>
-                )}
-                <div className="border-t border-gray-200 pt-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">Monthly Salary</span>
-                    <span className="text-lg font-bold text-gray-900">
-                      ${salaryInfo.employee.monthlySalary.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">Total Allowances</span>
-                    <span className="text-lg font-semibold text-red-600">
-                      -${salaryInfo.totalAllowances.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                    <span className="text-sm font-medium text-gray-700">Remaining Salary</span>
-                    <span className="text-xl font-bold text-green-600">
-                      ${salaryInfo.remainingSalary.toFixed(2)}
-                    </span>
-                  </div>
+                  {salaryInfo.allowances.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <div className="text-xs font-medium text-gray-600 mb-1">Allowances ({salaryInfo.allowances.length})</div>
+                      <div className="space-y-1 max-h-24 overflow-y-auto">
+                        {salaryInfo.allowances.map((allowance) => (
+                          <div key={allowance.id} className="flex justify-between text-xs">
+                            <span className="text-gray-600">
+                              {format(new Date(allowance.date), 'MMM dd')} - {allowance.description || 'Allowance'}
+                            </span>
+                            <span className="font-medium text-gray-900">
+                              ${allowance.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {salaryInfo.allowances.length > 0 && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Allowances in Current Cycle
-                    </h3>
-                    <div className="space-y-2">
-                      {salaryInfo.allowances.slice(0, 5).map((allowance) => (
-                        <div key={allowance.id} className="flex justify-between text-sm">
-                          <span className="text-gray-600">
-                            {format(new Date(allowance.date), 'MMM dd')}
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            ${allowance.amount.toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
+                {/* Last Month Section */}
+                {lastMonthSalaryInfo && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="text-xs font-bold text-gray-700 mb-2 uppercase">Last Month</div>
+                    {lastMonthSalaryInfo.salaryCycle && (
+                      <div className="text-xs text-gray-500 mb-2">
+                        {format(new Date(lastMonthSalaryInfo.salaryCycle.start), 'MMM dd')} - {format(new Date(lastMonthSalaryInfo.salaryCycle.end), 'MMM dd, yyyy')}
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Monthly Salary</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          ${lastMonthSalaryInfo.employee.monthlySalary.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Allowances</span>
+                        <span className="text-sm font-semibold text-red-600">
+                          -${lastMonthSalaryInfo.totalAllowances.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                        <span className="text-xs font-medium text-gray-700">Remaining</span>
+                        <span className="text-lg font-bold text-green-600">
+                          ${lastMonthSalaryInfo.remainingSalary.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
+                    {lastMonthSalaryInfo.allowances.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <div className="text-xs font-medium text-gray-600 mb-1">Allowances ({lastMonthSalaryInfo.allowances.length})</div>
+                        <div className="space-y-1 max-h-24 overflow-y-auto">
+                          {lastMonthSalaryInfo.allowances.map((allowance) => (
+                            <div key={allowance.id} className="flex justify-between text-xs">
+                              <span className="text-gray-600">
+                                {format(new Date(allowance.date), 'MMM dd')} - {allowance.description || 'Allowance'}
+                              </span>
+                              <span className="font-medium text-gray-900">
+                                ${allowance.amount.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
