@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { productionOrdersApi, dailyProductionApi, furnitureModelsApi } from '@/services/api';
 import type { ProductionOrder, DailyProduction, FurnitureModel } from '@/types';
 import { ProductionStatus, ProductionStep } from '@/types';
-import { Plus, CheckCircle2, Circle, Clock, ArrowRight, Package, Edit2, Trash2, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, CheckCircle2, Circle, Clock, ArrowRight, Package, Edit2, Trash2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { formatDate, getStepLabel } from '@/lib/utils';
 
 export function Production() {
@@ -22,6 +22,9 @@ export function Production() {
   const [editingOrder, setEditingOrder] = useState<ProductionOrder | null>(null);
   const [editingProduction, setEditingProduction] = useState<DailyProduction | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'IN_PROGRESS' | 'FINISHED'>('all');
 
   useEffect(() => {
     loadData();
@@ -178,14 +181,62 @@ export function Production() {
     return 'pending';
   };
 
+  // Filter orders by date and status
+  const filteredOrders = orders.filter(order => {
+    const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+    const orderDate = new Date(order.startDate);
+    const matchesStartDate = !filterStartDate || orderDate >= new Date(filterStartDate);
+    const matchesEndDate = !filterEndDate || orderDate <= new Date(filterEndDate);
+    return matchesStatus && matchesStartDate && matchesEndDate;
+  });
+
+  // Filter daily production by date
+  const filteredDailyProduction = dailyProduction.filter(prod => {
+    const prodDate = new Date(prod.date);
+    const matchesStartDate = !filterStartDate || prodDate >= new Date(filterStartDate);
+    const matchesEndDate = !filterEndDate || prodDate <= new Date(filterEndDate);
+    // Also filter by orders that match the filter
+    const orderInFilter = filteredOrders.some(o => o.id === prod.orderId);
+    return matchesStartDate && matchesEndDate && orderInFilter;
+  });
+
   const calculateStatistics = () => {
-    const totalOrders = orders.length;
-    const activeOrders = orders.filter(o => o.status === ProductionStatus.IN_PROGRESS).length;
-    const completedOrders = orders.filter(o => o.status === ProductionStatus.FINISHED).length;
-    const totalUnitsOrdered = orders.reduce((sum, o) => sum + o.quantity, 0);
-    const totalUnitsCompleted = orders.filter(o => o.status === ProductionStatus.FINISHED).reduce((sum, o) => sum + o.quantity, 0);
-    const totalUnitsLost = dailyProduction.reduce((sum, p) => sum + p.quantityLost, 0);
+    const totalOrders = filteredOrders.length;
+    const activeOrders = filteredOrders.filter(o => o.status === ProductionStatus.IN_PROGRESS).length;
+    const completedOrders = filteredOrders.filter(o => o.status === ProductionStatus.FINISHED).length;
+    const totalUnitsOrdered = filteredOrders.reduce((sum, o) => sum + o.quantity, 0);
+    const totalUnitsCompleted = filteredOrders.filter(o => o.status === ProductionStatus.FINISHED).reduce((sum, o) => sum + o.quantity, 0);
+    const totalUnitsLost = filteredDailyProduction.reduce((sum, p) => sum + p.quantityLost, 0);
     const completionRate = totalUnitsOrdered > 0 ? Math.round((totalUnitsCompleted / totalUnitsOrdered) * 100) : 0;
+    
+    const totalProductionRecords = filteredDailyProduction.length;
+    const totalUnitsEntered = filteredDailyProduction.reduce((sum, p) => sum + p.quantityEntered, 0);
+    const totalUnitsProduced = filteredDailyProduction.reduce((sum, p) => sum + p.quantityCompleted, 0);
+    const productionEfficiency = totalUnitsEntered > 0 ? Math.round((totalUnitsProduced / totalUnitsEntered) * 100) : 0;
+    
+    // Calculate total quantity by model
+    const quantityByModel = models.map(model => {
+      const modelOrders = filteredOrders.filter(o => o.modelId === model.id);
+      const totalOrdered = modelOrders.reduce((sum, o) => sum + o.quantity, 0);
+      const totalCompleted = modelOrders.filter(o => o.status === ProductionStatus.FINISHED).reduce((sum, o) => sum + o.quantity, 0);
+      const inProgress = modelOrders.filter(o => o.status === ProductionStatus.IN_PROGRESS).reduce((sum, o) => sum + o.quantity, 0);
+      return {
+        model,
+        totalOrdered,
+        totalCompleted,
+        inProgress,
+        ordersCount: modelOrders.length,
+      };
+    }).filter(m => m.totalOrdered > 0);
+
+    const productionByStep = Object.values(ProductionStep).map(step => {
+      const stepRecords = filteredDailyProduction.filter(p => p.step === step);
+      return {
+        step,
+        count: stepRecords.length,
+        completed: stepRecords.reduce((sum, p) => sum + p.quantityCompleted, 0),
+      };
+    });
     
     return {
       totalOrders,
@@ -195,6 +246,12 @@ export function Production() {
       totalUnitsCompleted,
       totalUnitsLost,
       completionRate,
+      totalProductionRecords,
+      totalUnitsEntered,
+      totalUnitsProduced,
+      productionEfficiency,
+      productionByStep,
+      quantityByModel,
     };
   };
 
@@ -206,22 +263,22 @@ export function Production() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Production Management</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Production Management</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Manage production orders and daily production tracking
           </p>
         </div>
-        <div className="flex space-x-3">
-          <Button onClick={() => {
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
+          <Button className="w-full sm:w-auto" onClick={() => {
             setEditingProduction(null);
             setShowProductionForm(true);
           }}>
             <Plus className="h-4 w-4 mr-2" />
             Record Production
           </Button>
-          <Button onClick={() => {
+          <Button className="w-full sm:w-auto" onClick={() => {
             setEditingOrder(null);
             setShowOrderForm(true);
           }}>
@@ -231,7 +288,68 @@ export function Production() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <Input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <Input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'IN_PROGRESS' | 'FINISHED')}
+                >
+                  <option value="all">All Status</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="FINISHED">Finished</option>
+                </Select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {(filterStartDate || filterEndDate || filterStatus !== 'all') && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                    setFilterStatus('all');
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </div>
+          {(filterStartDate || filterEndDate || filterStatus !== 'all') && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                Showing <span className="font-semibold">{filteredOrders.length}</span> orders 
+                {filterStartDate && ` from ${filterStartDate}`}
+                {filterEndDate && ` to ${filterEndDate}`}
+                {filterStatus !== 'all' && ` (${filterStatus === 'IN_PROGRESS' ? 'In Progress' : 'Finished'})`}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -251,12 +369,12 @@ export function Production() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed Orders</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completedOrders}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsCompleted} units</p>
+                <p className="text-sm font-medium text-gray-600">Total Units Ordered</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUnitsOrdered}</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsCompleted} completed</p>
               </div>
-              <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="h-12 w-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                <Clock className="h-6 w-6 text-indigo-600" />
               </div>
             </div>
           </CardContent>
@@ -266,9 +384,9 @@ export function Production() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.completionRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsCompleted} / {stats.totalUnitsOrdered} units</p>
+                <p className="text-sm font-medium text-gray-600">Production Efficiency</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.productionEfficiency}%</p>
+                <p className="text-xs text-gray-500 mt-1">{stats.totalUnitsProduced} / {stats.totalUnitsEntered} units</p>
               </div>
               <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
@@ -292,6 +410,47 @@ export function Production() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quantity by Model */}
+      {stats.quantityByModel.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Production by Model</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {stats.quantityByModel.map((item) => (
+                <div key={item.model.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900">{item.model.name}</h4>
+                    <span className="text-xs text-gray-500">{item.ordersCount} orders</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Ordered:</span>
+                      <span className="font-semibold text-gray-900">{item.totalOrdered}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Completed:</span>
+                      <span className="font-semibold text-green-600">{item.totalCompleted}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">In Progress:</span>
+                      <span className="font-semibold text-yellow-600">{item.inProgress}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                      <div
+                        className="bg-green-500 h-2 rounded-full"
+                        style={{ width: `${item.totalOrdered > 0 ? (item.totalCompleted / item.totalOrdered) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
         <DialogContent>
@@ -458,7 +617,7 @@ export function Production() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -468,7 +627,7 @@ export function Production() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <button
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
@@ -538,8 +697,10 @@ export function Production() {
                   </div>
                 </button>
               ))}
-              {orders.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No production orders yet</p>
+              {filteredOrders.length === 0 && (
+                <p className="text-center text-gray-500 py-8">
+                  {orders.length === 0 ? 'No production orders yet' : 'No orders match the selected filters'}
+                </p>
               )}
             </div>
           </CardContent>

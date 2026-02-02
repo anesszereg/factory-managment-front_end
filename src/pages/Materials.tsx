@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi } from '@/services/api';
-import type { RawMaterial, MaterialPurchase, MaterialConsumption } from '@/types';
+import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi } from '@/services/api';
+import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker } from '@/types';
 import { MaterialUnit } from '@/types';
-import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download } from 'lucide-react';
 import { formatDate, getUnitLabel, formatCurrency } from '@/lib/utils';
 
 export function Materials() {
@@ -22,6 +23,7 @@ export function Materials() {
   const [showConsumptionForm, setShowConsumptionForm] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<MaterialPurchase | null>(null);
   const [editingConsumption, setEditingConsumption] = useState<MaterialConsumption | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<RawMaterial | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'critical' | 'low' | 'good'>('all');
   const [filterUnit, setFilterUnit] = useState<string>('all');
@@ -30,8 +32,11 @@ export function Materials() {
   const [endDate, setEndDate] = useState('');
   const [showConsumptionHistory, setShowConsumptionHistory] = useState(false);
   const [consumptionFilterMaterial, setConsumptionFilterMaterial] = useState<number | ''>('');
+  const [consumptionFilterEmployee, setConsumptionFilterEmployee] = useState<number | ''>('');
   const [consumptionStartDate, setConsumptionStartDate] = useState('');
   const [consumptionEndDate, setConsumptionEndDate] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [pieceWorkers, setPieceWorkers] = useState<PieceWorker[]>([]);
 
   useEffect(() => {
     loadData();
@@ -39,14 +44,18 @@ export function Materials() {
 
   const loadData = async () => {
     try {
-      const [materialsRes, purchasesRes, consumptionRes] = await Promise.all([
+      const [materialsRes, purchasesRes, consumptionRes, employeesRes, pieceWorkersRes] = await Promise.all([
         rawMaterialsApi.getAll(),
         materialPurchasesApi.getAll(),
         materialConsumptionApi.getAll(),
+        employeesApi.getAll(),
+        pieceWorkersApi.getAll(),
       ]);
       setMaterials(materialsRes.data);
       setPurchases(purchasesRes.data);
       setConsumption(consumptionRes.data);
+      setEmployees(employeesRes.data);
+      setPieceWorkers(pieceWorkersRes.data);
       if (materialsRes.data.length > 0 && !selectedMaterial) {
         setSelectedMaterial(materialsRes.data[0]);
       }
@@ -62,21 +71,50 @@ export function Materials() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const loadingToast = toast.loading('Creating material...');
+    const loadingToast = toast.loading(editingMaterial ? 'Updating material...' : 'Creating material...');
     
     try {
-      await rawMaterialsApi.create({
-        name: formData.get('name') as string,
-        unit: formData.get('unit') as MaterialUnit,
-        currentStock: parseFloat(formData.get('currentStock') as string) || 0,
-        minStockAlert: parseFloat(formData.get('minStockAlert') as string) || 0,
-      });
-      toast.success('Material created successfully!', { id: loadingToast });
+      if (editingMaterial) {
+        await rawMaterialsApi.update(editingMaterial.id, {
+          name: formData.get('name') as string,
+          unit: formData.get('unit') as MaterialUnit,
+          currentStock: parseFloat(formData.get('currentStock') as string) || 0,
+          minStockAlert: parseFloat(formData.get('minStockAlert') as string) || 0,
+        });
+        toast.success('Material updated successfully!', { id: loadingToast });
+        setEditingMaterial(null);
+      } else {
+        await rawMaterialsApi.create({
+          name: formData.get('name') as string,
+          unit: formData.get('unit') as MaterialUnit,
+          currentStock: parseFloat(formData.get('currentStock') as string) || 0,
+          minStockAlert: parseFloat(formData.get('minStockAlert') as string) || 0,
+        });
+        toast.success('Material created successfully!', { id: loadingToast });
+      }
       setShowMaterialForm(false);
       loadData();
     } catch (error) {
-      console.error('Failed to create material:', error);
-      toast.error('Failed to create material. Please try again.', { id: loadingToast });
+      console.error('Failed to save material:', error);
+      toast.error('Failed to save material. Please try again.', { id: loadingToast });
+    }
+  };
+
+  const handleDeleteMaterial = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this material? This will also delete all associated purchases and consumption records.')) return;
+    
+    const loadingToast = toast.loading('Deleting material...');
+    
+    try {
+      await rawMaterialsApi.delete(id);
+      toast.success('Material deleted successfully!', { id: loadingToast });
+      if (selectedMaterial?.id === id) {
+        setSelectedMaterial(null);
+      }
+      loadData();
+    } catch (error) {
+      console.error('Failed to delete material:', error);
+      toast.error('Failed to delete material. Please try again.', { id: loadingToast });
     }
   };
 
@@ -138,10 +176,25 @@ export function Materials() {
     
     const loadingToast = toast.loading(editingConsumption ? 'Updating consumption...' : 'Recording consumption...');
     
+    // Parse the worker selection - can be employee ID or "pw-{pieceWorkerId}"
+    const workerValue = formData.get('workerId') as string;
+    let employeeId: number | undefined;
+    let pieceWorkerId: number | undefined;
+    
+    if (workerValue) {
+      if (workerValue.startsWith('pw-')) {
+        pieceWorkerId = parseInt(workerValue.replace('pw-', ''));
+      } else {
+        employeeId = parseInt(workerValue);
+      }
+    }
+    
     try {
       if (editingConsumption) {
         await materialConsumptionApi.update(editingConsumption.id, {
           quantity: parseFloat(formData.get('quantity') as string),
+          employeeId,
+          pieceWorkerId,
           notes: formData.get('notes') as string || undefined,
         });
         toast.success('Consumption updated successfully!', { id: loadingToast });
@@ -151,6 +204,8 @@ export function Materials() {
           materialId: parseInt(formData.get('materialId') as string),
           date: formData.get('date') as string,
           quantity: parseFloat(formData.get('quantity') as string),
+          employeeId,
+          pieceWorkerId,
           notes: formData.get('notes') as string || undefined,
         });
         toast.success('Consumption recorded successfully!', { id: loadingToast });
@@ -161,6 +216,41 @@ export function Materials() {
       console.error('Failed to save consumption:', error);
       toast.error('Failed to save consumption. Please try again.', { id: loadingToast });
     }
+  };
+
+  const exportToExcel = () => {
+    const filteredData = consumption.filter(c => {
+      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
+      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+      return matchesMaterial && matchesEmployee && matchesDate;
+    });
+
+    const exportData = filteredData.map(cons => {
+      const material = materials.find(m => m.id === cons.materialId);
+      const personName = cons.employee 
+        ? `${cons.employee.firstName} ${cons.employee.lastName}` 
+        : cons.pieceWorker 
+          ? `${cons.pieceWorker.firstName} ${cons.pieceWorker.lastName} (Worker)`
+          : 'N/A';
+      return {
+        'Date': formatDate(cons.date),
+        'Material': material?.name || 'Unknown',
+        'Unit': material ? getUnitLabel(material.unit) : '',
+        'Quantity': cons.quantity,
+        'Who Consumed': personName,
+        'Notes': cons.notes || ''
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Consumption History');
+    
+    const fileName = `consumption_history_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Excel file exported successfully!');
   };
 
   const handleDeleteConsumption = async (id: number) => {
@@ -277,57 +367,62 @@ export function Materials() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Raw Materials</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Raw Materials</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Manage inventory, purchases, and consumption
           </p>
         </div>
-        <div className="flex space-x-3">
-          <Button onClick={() => setShowConsumptionHistory(true)} variant="outline">
-            <TrendingDown className="h-4 w-4 mr-2" />
-            View History
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 w-full lg:w-auto">
+          <Button onClick={() => setShowConsumptionHistory(true)} variant="outline" className="text-xs sm:text-sm">
+            <TrendingDown className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">View </span>History
           </Button>
           <Button onClick={() => {
             setEditingConsumption(null);
             setShowConsumptionForm(!showConsumptionForm);
-          }} variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Record Consumption
+          }} variant="outline" className="text-xs sm:text-sm">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Record </span>Consumption
           </Button>
           <Button onClick={() => {
             setEditingPurchase(null);
             setShowPurchaseForm(!showPurchaseForm);
-          }} variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Record Purchase
+          }} variant="outline" className="text-xs sm:text-sm">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Record </span>Purchase
           </Button>
-          <Button onClick={() => setShowMaterialForm(!showMaterialForm)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Material
+          <Button onClick={() => {
+            setEditingMaterial(null);
+            setShowMaterialForm(!showMaterialForm);
+          }} className="text-xs sm:text-sm">
+            <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Add </span>Material
           </Button>
         </div>
       </div>
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range Filter</label>
-              <div className="flex gap-3 items-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   placeholder="Start date"
+                  className="w-full sm:w-auto"
                 />
-                <span className="text-gray-500">to</span>
+                <span className="text-gray-500 hidden sm:inline">to</span>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   placeholder="End date"
+                  className="w-full sm:w-auto"
                 />
                 {(startDate || endDate) && (
                   <Button
@@ -336,6 +431,7 @@ export function Materials() {
                       setStartDate('');
                       setEndDate('');
                     }}
+                    className="w-full sm:w-auto"
                   >
                     Clear
                   </Button>
@@ -363,7 +459,7 @@ export function Materials() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -444,66 +540,72 @@ export function Materials() {
         </Card>
       )}
 
-      {showMaterialForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Material</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateMaterial} className="space-y-4">
+      <Dialog open={showMaterialForm} onOpenChange={setShowMaterialForm}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowMaterialForm(false);
+            setEditingMaterial(null);
+          }}>
+            <DialogTitle>{editingMaterial ? 'Edit Material' : 'Add New Material'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateMaterial} className="space-y-4">
+            <Input
+              label="Material Name"
+              type="text"
+              name="name"
+              required
+              placeholder="e.g., Oak Wood, White Paint"
+              defaultValue={editingMaterial?.name || ''}
+              helperText="Enter the name of the raw material"
+            />
+            <Select
+              label="Unit"
+              name="unit"
+              required
+              defaultValue={editingMaterial?.unit || ''}
+              helperText="Select the measurement unit"
+            >
+              <option value="">Select unit</option>
+              {Object.values(MaterialUnit).map((unit) => (
+                <option key={unit} value={unit}>
+                  {getUnitLabel(unit)}
+                </option>
+              ))}
+            </Select>
+            <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Material Name"
-                type="text"
-                name="name"
-                required
-                placeholder="e.g., Oak Wood, White Paint"
-                helperText="Enter the name of the raw material"
+                label={editingMaterial ? "Current Stock" : "Initial Stock"}
+                type="number"
+                name="currentStock"
+                step="0.01"
+                min="0"
+                defaultValue={editingMaterial?.currentStock || 0}
+                placeholder="0.00"
+                helperText={editingMaterial ? "Current quantity in stock" : "Starting quantity"}
               />
-              <Select
-                label="Unit"
-                name="unit"
-                required
-                helperText="Select the measurement unit"
-              >
-                <option value="">Select unit</option>
-                {Object.values(MaterialUnit).map((unit) => (
-                  <option key={unit} value={unit}>
-                    {getUnitLabel(unit)}
-                  </option>
-                ))}
-              </Select>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Initial Stock"
-                  type="number"
-                  name="currentStock"
-                  step="0.01"
-                  min="0"
-                  defaultValue="0"
-                  placeholder="0.00"
-                  helperText="Starting quantity"
-                />
-                <Input
-                  label="Min Stock Alert"
-                  type="number"
-                  name="minStockAlert"
-                  step="0.01"
-                  min="0"
-                  defaultValue="0"
-                  placeholder="0.00"
-                  helperText="Alert threshold"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => setShowMaterialForm(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Add Material</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+              <Input
+                label="Min Stock Alert"
+                type="number"
+                name="minStockAlert"
+                step="0.01"
+                min="0"
+                defaultValue={editingMaterial?.minStockAlert || 0}
+                placeholder="0.00"
+                helperText="Alert threshold"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowMaterialForm(false);
+                setEditingMaterial(null);
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit">{editingMaterial ? 'Update Material' : 'Add Material'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPurchaseForm} onOpenChange={setShowPurchaseForm}>
         <DialogContent>
@@ -628,6 +730,36 @@ export function Materials() {
                 defaultValue={editingConsumption?.quantity}
                 helperText="Amount consumed from stock"
               />
+              <Select
+                label="Who consumed"
+                name="workerId"
+                defaultValue={
+                  editingConsumption?.pieceWorkerId 
+                    ? `pw-${editingConsumption.pieceWorkerId}` 
+                    : editingConsumption?.employeeId || ''
+                }
+                helperText="Select the employee or worker who used this material"
+              >
+                <option value="">Select person (optional)</option>
+                {employees.length > 0 && (
+                  <optgroup label="Employees (Salaried)">
+                    {employees.map((employee) => (
+                      <option key={`emp-${employee.id}`} value={employee.id}>
+                        {employee.firstName} {employee.lastName}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {pieceWorkers.length > 0 && (
+                  <optgroup label="Workers (Piece-rate)">
+                    {pieceWorkers.map((worker) => (
+                      <option key={`pw-${worker.id}`} value={`pw-${worker.id}`}>
+                        {worker.firstName} {worker.lastName}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </Select>
               <Textarea
                 label="Notes"
                 name="notes"
@@ -649,7 +781,7 @@ export function Materials() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-4">
         <div className="lg:col-span-1 space-y-4">
           <Card>
             <CardHeader>
@@ -756,24 +888,79 @@ export function Materials() {
             <>
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-4xl">{getMaterialIcon(selectedMaterial.name)}</span>
-                      <div>
-                        <CardTitle>{selectedMaterial.name}</CardTitle>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Unit: {getUnitLabel(selectedMaterial.unit)}
-                        </p>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-4xl">{getMaterialIcon(selectedMaterial.name)}</span>
+                        <div>
+                          <CardTitle>{selectedMaterial.name}</CardTitle>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Unit: {getUnitLabel(selectedMaterial.unit)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-gray-900">{selectedMaterial.currentStock}</p>
+                        <p className="text-sm text-gray-500">Current Stock</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold text-gray-900">{selectedMaterial.currentStock}</p>
-                      <p className="text-sm text-gray-500">Current Stock</p>
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setEditingPurchase(null);
+                          setShowPurchaseForm(true);
+                          setTimeout(() => {
+                            const materialSelect = document.querySelector('select[name="materialId"]') as HTMLSelectElement;
+                            if (materialSelect) materialSelect.value = selectedMaterial.id.toString();
+                          }, 0);
+                        }}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Record Purchase
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setEditingConsumption(null);
+                          setShowConsumptionForm(true);
+                          setTimeout(() => {
+                            const materialSelect = document.querySelector('select[name="materialId"]') as HTMLSelectElement;
+                            if (materialSelect) materialSelect.value = selectedMaterial.id.toString();
+                          }, 0);
+                        }}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <Minus className="h-4 w-4 mr-1" />
+                        Record Consumption
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingMaterial(selectedMaterial);
+                          setShowMaterialForm(true);
+                        }}
+                      >
+                        <Edit2 className="h-4 w-4 mr-1" />
+                        Edit Material
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                        onClick={() => handleDeleteMaterial(selectedMaterial.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-4">
                     <div className="p-4 bg-blue-50 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-medium text-blue-900">Min Alert</p>
@@ -812,7 +999,7 @@ export function Materials() {
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Average Unit Price</p>
                       <p className="text-lg font-semibold text-gray-900">
@@ -859,7 +1046,7 @@ export function Materials() {
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
@@ -982,15 +1169,15 @@ export function Materials() {
       </div>
 
       <Dialog open={showConsumptionHistory} onOpenChange={setShowConsumptionHistory}>
-        <DialogContent className="max-w-6xl">
+        <DialogContent className="max-w-7xl w-[95vw] h-[90vh] flex flex-col">
           <DialogHeader onClose={() => setShowConsumptionHistory(false)}>
             <DialogTitle>Consumption History</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             <Card>
               <CardContent className="pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Material</label>
                     <Select
@@ -1003,6 +1190,33 @@ export function Materials() {
                           {material.name}
                         </option>
                       ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Person</label>
+                    <Select
+                      value={consumptionFilterEmployee}
+                      onChange={(e) => setConsumptionFilterEmployee(e.target.value ? parseInt(e.target.value) : '')}
+                    >
+                      <option value="">All People</option>
+                      {employees.length > 0 && (
+                        <optgroup label="Employees (Salaried)">
+                          {employees.map((employee) => (
+                            <option key={`emp-${employee.id}`} value={employee.id}>
+                              {employee.firstName} {employee.lastName}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {pieceWorkers.length > 0 && (
+                        <optgroup label="Workers (Piece-rate)">
+                          {pieceWorkers.map((worker) => (
+                            <option key={`pw-${worker.id}`} value={`pw-${worker.id}`}>
+                              {worker.firstName} {worker.lastName}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </Select>
                   </div>
                   <div>
@@ -1021,24 +1235,37 @@ export function Materials() {
                       onChange={(e) => setConsumptionEndDate(e.target.value)}
                     />
                   </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setConsumptionFilterMaterial('');
+                        setConsumptionFilterEmployee('');
+                        setConsumptionStartDate('');
+                        setConsumptionEndDate('');
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-wrap gap-2 mt-4">
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setConsumptionFilterMaterial('');
-                      setConsumptionStartDate('');
-                      setConsumptionEndDate('');
-                    }}
+                    onClick={exportToExcel}
+                    className="text-green-600 border-green-600 hover:bg-green-50"
                   >
-                    Clear Filters
+                    <Download className="h-4 w-4 mr-2" />
+                    Export to Excel
                   </Button>
                   <div className="ml-auto text-sm text-gray-600 flex items-center">
                     Showing {consumption.filter(c => {
                       const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
                       const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
                                          (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
-                      return matchesMaterial && matchesDate;
+                      return matchesMaterial && matchesEmployee && matchesDate;
                     }).length} records
                   </div>
                 </div>
@@ -1061,6 +1288,9 @@ export function Materials() {
                           Quantity
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Who Consumed
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Notes
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1072,9 +1302,10 @@ export function Materials() {
                       {consumption
                         .filter(c => {
                           const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                          const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
                           const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
                                              (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
-                          return matchesMaterial && matchesDate;
+                          return matchesMaterial && matchesEmployee && matchesDate;
                         })
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .map((cons) => {
@@ -1101,6 +1332,13 @@ export function Materials() {
                                 <span className="text-sm font-semibold text-red-600">
                                   -{cons.quantity} {material ? getUnitLabel(material.unit) : ''}
                                 </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {cons.employee 
+                                  ? `${cons.employee.firstName} ${cons.employee.lastName}` 
+                                  : cons.pieceWorker 
+                                    ? `${cons.pieceWorker.firstName} ${cons.pieceWorker.lastName} (Worker)`
+                                    : '-'}
                               </td>
                               <td className="px-6 py-4 text-sm text-gray-500">
                                 {cons.notes || '-'}
@@ -1134,9 +1372,10 @@ export function Materials() {
                   </table>
                   {consumption.filter(c => {
                     const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+                    const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
                     const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
                                        (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
-                    return matchesMaterial && matchesDate;
+                    return matchesMaterial && matchesEmployee && matchesDate;
                   }).length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       {consumption.length === 0 ? 'No consumption records yet' : 'No records match the selected filters'}

@@ -15,7 +15,10 @@ import type {
   ExpenseCategory,
   Employee,
   SalaryAllowance,
-  EmployeeStatus
+  EmployeeStatus,
+  PieceWorker,
+  PieceWorkerStatus,
+  DailyPieceReceipt
 } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api';
@@ -94,6 +97,7 @@ export const rawMaterialsApi = {
   update: (id: number, data: {
     name?: string;
     unit?: MaterialUnit;
+    currentStock?: number;
     minStockAlert?: number;
   }) => api.put<RawMaterial>(`/raw-materials/${id}`, data),
   delete: (id: number) => api.delete(`/raw-materials/${id}`),
@@ -125,6 +129,8 @@ export const materialConsumptionApi = {
   getAll: (filters?: { 
     materialId?: number; 
     orderId?: number;
+    employeeId?: number;
+    pieceWorkerId?: number;
     startDate?: string;
     endDate?: string;
   }) => api.get<MaterialConsumption[]>('/material-consumption', { params: filters }),
@@ -135,10 +141,14 @@ export const materialConsumptionApi = {
     quantity: number;
     orderId?: number;
     step?: ProductionStep;
+    employeeId?: number;
+    pieceWorkerId?: number;
     notes?: string;
   }) => api.post<MaterialConsumption>('/material-consumption', data),
   update: (id: number, data: {
     quantity?: number;
+    employeeId?: number;
+    pieceWorkerId?: number;
     notes?: string;
   }) => api.put<MaterialConsumption>(`/material-consumption/${id}`, data),
   delete: (id: number) => api.delete(`/material-consumption/${id}`),
@@ -252,6 +262,56 @@ export const salaryAllowancesApi = {
   delete: (id: number) => api.delete(`/salary-allowances/${id}`),
   getSummary: (startDate?: string, endDate?: string) => 
     api.get('/salary-allowances/summary', { params: { startDate, endDate } }),
+};
+
+export const pieceWorkersApi = {
+  getAll: (filters?: { 
+    status?: PieceWorkerStatus;
+  }) => api.get<PieceWorker[]>('/piece-workers', { params: filters }),
+  getById: (id: number) => api.get<PieceWorker>(`/piece-workers/${id}`),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    pricePerPiece: number;
+    status?: PieceWorkerStatus;
+  }) => api.post<PieceWorker>('/piece-workers', data),
+  update: (id: number, data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    pricePerPiece?: number;
+    status?: PieceWorkerStatus;
+  }) => api.put<PieceWorker>(`/piece-workers/${id}`, data),
+  delete: (id: number) => api.delete(`/piece-workers/${id}`),
+};
+
+export const dailyPieceReceiptsApi = {
+  getAll: (filters?: { 
+    pieceWorkerId?: number;
+    paymentStatus?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<DailyPieceReceipt[]>('/daily-piece-receipts', { params: filters }),
+  getById: (id: number) => api.get<DailyPieceReceipt>(`/daily-piece-receipts/${id}`),
+  create: (data: {
+    pieceWorkerId: number;
+    date: string;
+    items: { itemName: string; quantity: number; pricePerPiece: number }[];
+    paidAmount?: number;
+    notes?: string;
+  }) => api.post<DailyPieceReceipt>('/daily-piece-receipts', data),
+  update: (id: number, data: {
+    date?: string;
+    items?: { itemName: string; quantity: number; pricePerPiece: number }[];
+    paidAmount?: number;
+    notes?: string;
+  }) => api.put<DailyPieceReceipt>(`/daily-piece-receipts/${id}`, data),
+  addPayment: (id: number, amount: number) => 
+    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount }),
+  delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
+  getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
+    api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),
 };
 
 export default api;

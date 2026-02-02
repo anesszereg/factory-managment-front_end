@@ -115,25 +115,25 @@ const Employees: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Employee Management</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Employee Management</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
         >
           {showForm ? 'Cancel' : '+ Add Employee'}
         </button>
       </div>
 
-      <div className="mb-6">
+      <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Filter by Status
         </label>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as EmployeeStatus | '')}
-          className="border border-gray-300 rounded-lg px-4 py-2 w-64"
+          className="border border-gray-300 rounded-lg px-4 py-2 w-full sm:w-64"
         >
           <option value="">All Employees</option>
           <option value={EmployeeStatus.ACTIVE}>Active</option>
@@ -143,11 +143,11 @@ const Employees: React.FC = () => {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">
             {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
           </h2>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 First Name *
@@ -222,7 +222,7 @@ const Employees: React.FC = () => {
                 <option value={EmployeeStatus.ON_LEAVE}>On Leave</option>
               </select>
             </div>
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Address
               </label>
@@ -233,7 +233,7 @@ const Employees: React.FC = () => {
                 rows={3}
               />
             </div>
-            <div className="md:col-span-2 flex gap-4">
+            <div className="sm:col-span-2 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 type="submit"
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
@@ -252,74 +252,125 @@ const Employees: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hire Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Monthly Salary
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {employees.map((employee) => (
-              <tr key={employee.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {employee.firstName} {employee.lastName}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{employee.phone || '-'}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {format(new Date(employee.hireDate), 'MMM dd, yyyy')}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">
-                    ${employee.monthlySalary.toFixed(2)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(employee.status)}`}>
-                    {employee.status.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(employee)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(employee.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
-                </td>
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-4">
+        {employees.map((employee) => (
+          <div key={employee.id} className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {employee.firstName} {employee.lastName}
+                </h3>
+                <p className="text-sm text-gray-500">{employee.phone || 'No phone'}</p>
+              </div>
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(employee.status)}`}>
+                {employee.status.replace('_', ' ')}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div>
+                <p className="text-gray-500">Hire Date</p>
+                <p className="font-medium">{format(new Date(employee.hireDate), 'MMM dd, yyyy')}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Monthly Salary</p>
+                <p className="font-semibold text-green-600">${employee.monthlySalary.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => handleEdit(employee)}
+                className="flex-1 text-center text-blue-600 hover:text-blue-900 py-2 text-sm font-medium"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(employee.id)}
+                className="flex-1 text-center text-red-600 hover:text-red-900 py-2 text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+        {employees.length === 0 && (
+          <div className="text-center py-8 text-gray-500 bg-white rounded-lg shadow-md">
+            No employees found. Add your first employee to get started.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hire Date
+                </th>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Monthly Salary
+                </th>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {employees.map((employee) => (
+                <tr key={employee.id} className="hover:bg-gray-50">
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {employee.firstName} {employee.lastName}
+                    </div>
+                  </td>
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{employee.phone || '-'}</div>
+                  </td>
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {format(new Date(employee.hireDate), 'MMM dd, yyyy')}
+                    </div>
+                  </td>
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">
+                      ${employee.monthlySalary.toFixed(2)}
+                    </div>
+                  </td>
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(employee.status)}`}>
+                      {employee.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(employee)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(employee.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {employees.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No employees found. Add your first employee to get started.

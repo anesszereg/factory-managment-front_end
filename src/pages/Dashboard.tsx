@@ -102,34 +102,36 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
             Overview of production, materials, and expenses
           </p>
         </div>
-        <Calendar className="h-8 w-8 text-blue-500" />
+        <Calendar className="hidden sm:block h-8 w-8 text-blue-500" />
       </div>
 
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range Filter</label>
-              <div className="flex gap-3 items-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   placeholder="Start date"
+                  className="w-full sm:w-auto"
                 />
-                <span className="text-gray-500">to</span>
+                <span className="text-gray-500 hidden sm:inline">to</span>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   placeholder="End date"
+                  className="w-full sm:w-auto"
                 />
                 {(startDate || endDate) && (
                   <Button
@@ -138,6 +140,7 @@ export function Dashboard() {
                       setStartDate('');
                       setEndDate('');
                     }}
+                    className="w-full sm:w-auto"
                   >
                     Clear
                   </Button>
@@ -165,7 +168,7 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -240,7 +243,7 @@ export function Dashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="p-4 bg-white rounded-lg shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-medium text-gray-600">Active Employees</p>
@@ -309,7 +312,7 @@ export function Dashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -391,7 +394,7 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
