@@ -271,3 +271,80 @@ export interface DailyPieceReceipt {
   pieceWorker?: PieceWorker;
   items?: ReceiptItem[];
 }
+
+// Suppliers
+export enum SupplierStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
+
+export enum SupplierOrderStatus {
+  PENDING = 'PENDING',
+  PARTIAL = 'PARTIAL',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  status: SupplierStatus;
+  createdAt: string;
+  updatedAt: string;
+  orders?: SupplierOrder[];
+}
+
+export interface SupplierOrder {
+  id: number;
+  supplierId: number;
+  orderDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  status: SupplierOrderStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: Supplier;
+  items?: SupplierOrderItem[];
+  payments?: SupplierPayment[];
+}
+
+export interface SupplierOrderItem {
+  id: number;
+  orderId: number;
+  materialId?: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  createdAt: string;
+  updatedAt: string;
+  material?: RawMaterial;
+}
+
+export interface SupplierPayment {
+  id: number;
+  orderId: number;
+  expenseId?: number;
+  date: string;
+  amount: number;
+  paymentMethod?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  expense?: DailyExpense;
+}
+
+export interface SupplierSummary {
+  supplier: Supplier;
+  totalOrders: number;
+  totalAmount: number;
+  totalPaid: number;
+  totalRemaining: number;
+  pendingOrders: number;
+  partialOrders: number;
+  completedOrders: number;
+}

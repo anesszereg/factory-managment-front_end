@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { employeesApi } from '../services/api';
 import { Employee, EmployeeStatus } from '../types';
 import { format } from 'date-fns';
+import { PageLoading } from '../components/ui/Loading';
 
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -111,7 +112,7 @@ const Employees: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (

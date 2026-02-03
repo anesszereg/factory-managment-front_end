@@ -9,6 +9,7 @@ import { dailyExpensesApi } from '@/services/api';
 import type { DailyExpense } from '@/types';
 import { ExpenseCategory } from '@/types';
 import { Plus, DollarSign, TrendingUp, Calendar, CreditCard, Filter, Edit2, Trash2 } from 'lucide-react';
+import { PageLoading } from '../components/ui/Loading';
 import { formatDate, formatCurrency, getCategoryLabel } from '@/lib/utils';
 
 export function Expenses() {
@@ -95,7 +96,7 @@ export function Expenses() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   const filterByDateRange = (date: string) => {

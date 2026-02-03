@@ -18,7 +18,13 @@ import type {
   EmployeeStatus,
   PieceWorker,
   PieceWorkerStatus,
-  DailyPieceReceipt
+  DailyPieceReceipt,
+  Supplier,
+  SupplierStatus,
+  SupplierOrder,
+  SupplierOrderStatus,
+  SupplierPayment,
+  SupplierSummary
 } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api';
@@ -312,6 +318,64 @@ export const dailyPieceReceiptsApi = {
   delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
   getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
     api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),
+};
+
+// Suppliers API
+export const suppliersApi = {
+  getAll: (filters?: { status?: SupplierStatus }) => 
+    api.get<Supplier[]>('/suppliers', { params: filters }),
+  getById: (id: number) => api.get<Supplier>(`/suppliers/${id}`),
+  getSummary: (id: number) => api.get<SupplierSummary>(`/suppliers/${id}/summary`),
+  create: (data: {
+    name: string;
+    phone?: string;
+    address?: string;
+    notes?: string;
+    status?: SupplierStatus;
+  }) => api.post<Supplier>('/suppliers', data),
+  update: (id: number, data: {
+    name?: string;
+    phone?: string;
+    address?: string;
+    notes?: string;
+    status?: SupplierStatus;
+  }) => api.put<Supplier>(`/suppliers/${id}`, data),
+  delete: (id: number) => api.delete(`/suppliers/${id}`),
+};
+
+export const supplierOrdersApi = {
+  getAll: (filters?: {
+    supplierId?: number;
+    status?: SupplierOrderStatus;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<SupplierOrder[]>('/suppliers/orders/all', { params: filters }),
+  getById: (id: number) => api.get<SupplierOrder>(`/suppliers/orders/${id}`),
+  create: (data: {
+    supplierId: number;
+    orderDate: string;
+    notes?: string;
+    items: {
+      materialId?: number;
+      description: string;
+      quantity: number;
+      unitPrice: number;
+    }[];
+  }) => api.post<SupplierOrder>('/suppliers/orders', data),
+  update: (id: number, data: {
+    orderDate?: string;
+    notes?: string;
+    status?: SupplierOrderStatus;
+  }) => api.put<SupplierOrder>(`/suppliers/orders/${id}`, data),
+  delete: (id: number) => api.delete(`/suppliers/orders/${id}`),
+  addPayment: (orderId: number, data: {
+    date: string;
+    amount: number;
+    paymentMethod?: string;
+    notes?: string;
+    createExpense?: boolean;
+  }) => api.post<SupplierPayment>(`/suppliers/orders/${orderId}/payments`, data),
+  deletePayment: (paymentId: number) => api.delete(`/suppliers/payments/${paymentId}`),
 };
 
 export default api;

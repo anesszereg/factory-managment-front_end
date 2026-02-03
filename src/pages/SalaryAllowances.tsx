@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { salaryAllowancesApi, employeesApi } from '../services/api';
 import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo } from '../types';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { PageLoading } from '@/components/ui/Loading';
 
 const SalaryAllowances: React.FC = () => {
   const [allowances, setAllowances] = useState<SalaryAllowance[]>([]);
@@ -165,7 +166,7 @@ const SalaryAllowances: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (

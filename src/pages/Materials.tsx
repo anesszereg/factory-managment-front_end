@@ -12,6 +12,7 @@ import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, Piec
 import { MaterialUnit } from '@/types';
 import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download } from 'lucide-react';
 import { formatDate, getUnitLabel, formatCurrency } from '@/lib/utils';
+import { PageLoading } from '@/components/ui/Loading';
 
 export function Materials() {
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
@@ -295,7 +296,7 @@ export function Materials() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   const filterByDateRange = (date: string) => {

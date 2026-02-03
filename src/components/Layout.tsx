@@ -13,7 +13,8 @@ import {
   X,
   Hammer,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Production', href: '/production', icon: Factory },
     { name: 'Raw Materials', href: '/materials', icon: Boxes },
+    { name: 'Suppliers', href: '/suppliers', icon: Truck },
     { name: 'Expenses', href: '/expenses', icon: DollarSign },
     { name: 'Incomes', href: '/incomes', icon: TrendingUp },
     { name: 'Models', href: '/models', icon: Package },

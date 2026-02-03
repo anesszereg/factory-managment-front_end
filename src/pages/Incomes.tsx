@@ -10,6 +10,7 @@ import type { Income } from '@/types';
 import { IncomeSource } from '@/types';
 import { Plus, TrendingUp, DollarSign, Calendar, Filter, Edit2, Trash2 } from 'lucide-react';
 import { formatDate, formatCurrency, getIncomeSourceLabel } from '@/lib/utils';
+import { PageLoading } from '@/components/ui/Loading';
 
 export function Incomes() {
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -99,7 +100,7 @@ export function Incomes() {
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (

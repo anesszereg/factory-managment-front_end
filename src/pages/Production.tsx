@@ -11,6 +11,7 @@ import type { ProductionOrder, DailyProduction, FurnitureModel } from '@/types';
 import { ProductionStatus, ProductionStep } from '@/types';
 import { Plus, CheckCircle2, Circle, Clock, ArrowRight, Package, Edit2, Trash2, TrendingUp, AlertTriangle } from 'lucide-react';
 import { formatDate, getStepLabel } from '@/lib/utils';
+import { PageLoading } from '@/components/ui/Loading';
 
 export function Production() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
@@ -258,7 +259,7 @@ export function Production() {
   const stats = calculateStatistics();
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (

@@ -17,6 +17,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/Dialog';
+import { PageLoading } from '../components/ui/Loading';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -485,142 +486,163 @@ export default function PieceWorkers() {
   const printReceipt = (receipt: DailyPieceReceipt) => {
     const worker = workers.find(w => w.id === receipt.pieceWorkerId);
     const itemsHtml = receipt.items?.map(item => `
-      <div class="row">
-        <span class="label">${item.itemName} (${item.quantity}×${formatCurrency(item.pricePerPiece)})</span>
-        <span class="value">${formatCurrency(item.totalPrice)}</span>
-      </div>
+      <tr>
+        <td>${item.itemName}</td>
+        <td class="center">${item.quantity}</td>
+        <td class="right">${formatCurrency(item.pricePerPiece)}</td>
+        <td class="right">${formatCurrency(item.totalPrice)}</td>
+      </tr>
     `).join('') || '';
+    
+    const subTotal = receipt.totalAmount;
+    const remaining = receipt.totalAmount - receipt.paidAmount;
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Receipt #${receipt.id}</title>
+            <title>Bon #${receipt.id}</title>
             <style>
-              @page { size: A6; margin: 5mm; }
+              @page { size: 80mm 110mm; margin: 0; }
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { 
-                font-family: Arial, sans-serif; 
+                font-family: 'Courier New', monospace; 
+                font-size: 10px;
+                width: 80mm;
+                padding: 3mm;
+                line-height: 1.3;
+              }
+              .title {
+                text-align: center;
                 font-size: 14px;
-                width: 105mm;
-                height: 148mm;
-                padding: 5mm;
+                font-weight: bold;
+                margin-bottom: 2mm;
               }
-              .header { 
-                text-align: center; 
-                border-bottom: 2px solid #000; 
-                padding-bottom: 3mm; 
-                margin-bottom: 3mm; 
+              .info-center {
+                text-align: center;
+                font-size: 9px;
+                margin-bottom: 1mm;
               }
-              .header h1 { font-size: 20px; margin-bottom: 2px; }
-              .header p { font-size: 12px; color: #666; }
-              .info { margin-bottom: 3mm; }
-              .info-row { 
-                display: flex; 
-                justify-content: space-between; 
-                padding: 1mm 0; 
-                font-size: 14px;
+              .separator {
+                border-bottom: 1px dashed #000;
+                margin: 2mm 0;
               }
-              .items { 
-                border: 1px solid #ddd; 
-                padding: 2mm; 
-                margin-bottom: 3mm; 
+              .ref-section {
+                font-size: 9px;
+                margin-bottom: 2mm;
               }
-              .items-title { font-weight: bold; font-size: 14px; margin-bottom: 2mm; border-bottom: 1px dashed #ccc; padding-bottom: 1mm; }
-              .row { 
-                display: flex; 
-                justify-content: space-between; 
-                padding: 1mm 0; 
+              .ref-row {
+                display: flex;
+                justify-content: space-between;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 9px;
+                margin-bottom: 2mm;
+              }
+              th {
+                text-align: left;
+                border-bottom: 1px solid #000;
+                padding: 1mm 0;
+                font-size: 9px;
+              }
+              th.center, td.center { text-align: center; }
+              th.right, td.right { text-align: right; }
+              td {
+                padding: 1mm 0;
+                border-bottom: 1px dotted #ccc;
+              }
+              .totals {
+                font-size: 10px;
+                margin-top: 2mm;
+              }
+              .totals-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5mm 0;
+              }
+              .totals-row.bold {
+                font-weight: bold;
+              }
+              .totals-row.total-line {
                 font-size: 12px;
-                border-bottom: 1px dotted #eee;
-              }
-              .row:last-child { border-bottom: none; }
-              .label { color: #333; }
-              .value { font-weight: bold; }
-              .total { 
-                text-align: center; 
-                padding: 3mm; 
-                background: #f0f0f0; 
-                font-size: 18px;
                 font-weight: bold;
-                margin-bottom: 2mm;
+                border-top: 1px solid #000;
+                padding-top: 1mm;
+                margin-top: 1mm;
               }
-              .payment { 
-                background: #f8f8f8; 
-                padding: 2mm; 
-                margin-bottom: 2mm;
-              }
-              .payment .row { font-size: 12px; }
-              .status { 
-                text-align: center; 
-                padding: 2mm; 
+              .totals-row.remaining {
+                color: #c00;
                 font-weight: bold;
-                font-size: 14px;
               }
-              .status.paid { background: #d4edda; color: #155724; }
-              .status.part-paid { background: #fff3cd; color: #856404; }
-              .status.not-paid { background: #f8d7da; color: #721c24; }
-              .notes { font-size: 12px; color: #666; margin-bottom: 2mm; padding: 1mm; background: #fafafa; }
-              .footer { 
-                text-align: center; 
-                font-size: 12px; 
-                color: #999; 
-                border-top: 1px dashed #ccc;
-                padding-top: 2mm;
-                margin-top: auto;
+              .footer {
+                text-align: center;
+                font-size: 8px;
+                margin-top: 3mm;
+                color: #666;
               }
               @media print { 
                 body { 
-                  width: 105mm; 
-                  height: 148mm; 
-                  padding: 5mm;
+                  width: 80mm;
+                  padding: 3mm;
                 }
               }
             </style>
           </head>
           <body>
-            <div class="header">
-              <h1>Work Receipt</h1>
-              <p>Factory Management</p>
-            </div>
-            <div class="info">
-              <div class="info-row">
-                <span>Worker:</span>
-                <strong>${worker?.firstName} ${worker?.lastName}</strong>
-              </div>
-              <div class="info-row">
-                <span>Date:</span>
-                <strong>${format(new Date(receipt.date), 'dd/MM/yyyy')}</strong>
-              </div>
-              <div class="info-row">
-                <span>Receipt #:</span>
-                <strong>${receipt.id}</strong>
+            <div class="title">BON DE TRAVAIL</div>
+            <div class="info-center">Travailleur: ${worker?.firstName} ${worker?.lastName}</div>
+            <div class="info-center">Date: ${format(new Date(receipt.date), 'dd/MM/yyyy HH:mm')}</div>
+            
+            <div class="separator"></div>
+            
+            <div class="ref-section">
+              <div class="ref-row">
+                <span>Référence: ${receipt.id}</span>
+                <span>Statut: ${getPaymentStatusLabel(receipt.paymentStatus)}</span>
               </div>
             </div>
-            <div class="items">
-              <div class="items-title">Items</div>
-              ${itemsHtml}
-            </div>
-            <div class="total">
-              Total: ${formatCurrency(receipt.totalAmount)}
-            </div>
-            <div class="payment">
-              <div class="row">
-                <span class="label">Paid:</span>
-                <span class="value">${formatCurrency(receipt.paidAmount)}</span>
+            
+            <table>
+              <thead>
+                <tr>
+                  <th>Désignation</th>
+                  <th class="center">Qté</th>
+                  <th class="right">P.U</th>
+                  <th class="right">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+            
+            <div class="totals">
+              <div class="totals-row">
+                <span>Sous-total:</span>
+                <span>${formatCurrency(subTotal)}</span>
               </div>
-              <div class="row">
-                <span class="label">Remaining:</span>
-                <span class="value">${formatCurrency(receipt.totalAmount - receipt.paidAmount)}</span>
+              <div class="totals-row total-line">
+                <span>TOTAL:</span>
+                <span>${formatCurrency(receipt.totalAmount)}</span>
+              </div>
+              <div class="totals-row">
+                <span>Payé:</span>
+                <span>${formatCurrency(receipt.paidAmount)}</span>
+              </div>
+              <div class="totals-row remaining">
+                <span>Reste à payer:</span>
+                <span>${formatCurrency(remaining)}</span>
               </div>
             </div>
-            <div class="status ${receipt.paymentStatus === 'PAID' ? 'paid' : receipt.paymentStatus === 'PART_PAID' ? 'part-paid' : 'not-paid'}">
-              ${getPaymentStatusLabel(receipt.paymentStatus)}
-            </div>
-            ${receipt.notes ? `<div class="notes">Notes: ${receipt.notes}</div>` : ''}
+            
+            ${receipt.notes ? `<div style="font-size: 8px; margin-top: 2mm; color: #666;">Note: ${receipt.notes}</div>` : ''}
+            
             <div class="footer">
-              <p>${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <p>Merci pour votre confiance</p>
+              <p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
             </div>
           </body>
         </html>
@@ -655,7 +677,7 @@ export default function PieceWorkers() {
   const totalAmountFiltered = filteredReceipts.reduce((sum, r) => sum + r.totalAmount, 0);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (
