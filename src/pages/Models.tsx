@@ -10,6 +10,7 @@ import type { FurnitureModel } from '@/types';
 import { FurnitureSize } from '@/types';
 import { Plus, Package, Ruler } from 'lucide-react';
 import { formatDate, getSizeLabel } from '@/lib/utils';
+import { PageLoading } from '@/components/ui/Loading';
 
 export function Models() {
   const [models, setModels] = useState<FurnitureModel[]>([]);
@@ -54,7 +55,7 @@ export function Models() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   return (

@@ -6,6 +6,8 @@ import { dashboardApi, dailyExpensesApi, dailyProductionApi, rawMaterialsApi, pr
 import type { DashboardStats, DailyExpense, DailyProduction, ProductionOrder, SalaryAllowance, Employee } from '@/types';
 import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Calendar, Users, Wallet } from 'lucide-react';
 import { formatCurrency, getStepLabel, getUnitLabel, formatDate } from '@/lib/utils';
+import { PageLoading } from '@/components/ui/Loading';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -47,7 +49,7 @@ export function Dashboard() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <PageLoading />;
   }
 
   if (!stats) {
@@ -100,8 +102,30 @@ export function Dashboard() {
   const remainingSalaryBudget = totalMonthlySalaries - totalAllowancesPaid;
   const averageAllowancePerEmployee = employees.length > 0 ? totalAllowancesPaid / employees.length : 0;
 
+  // Chart data preparation
+  const expenseChartData = Object.entries(
+    filteredExpenses.reduce((acc, e) => {
+      const date = e.date.split('T')[0];
+      acc[date] = (acc[date] || 0) + e.amount;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([date, amount]) => ({ date: formatDate(date), amount })).slice(-14);
+
+  const productionChartData = Object.entries(
+    filteredProduction.reduce((acc, p) => {
+      const date = p.date.split('T')[0];
+      if (!acc[date]) acc[date] = { completed: 0, lost: 0 };
+      acc[date].completed += p.quantityCompleted;
+      acc[date].lost += p.quantityLost;
+      return acc;
+    }, {} as Record<string, { completed: number; lost: number }>)
+  ).map(([date, data]) => ({ date: formatDate(date), ...data })).slice(-14);
+
+  const expensePieData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
+  const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -109,7 +133,7 @@ export function Dashboard() {
             Overview of production, materials, and expenses
           </p>
         </div>
-        <Calendar className="hidden sm:block h-8 w-8 text-blue-500" />
+        <Calendar className="hidden sm:block h-8 w-8 text-blue-500 animate-pulse" />
       </div>
 
       <Card>
@@ -230,6 +254,158 @@ export function Dashboard() {
                 <p className="text-xs text-orange-500 mt-1">Need restocking</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
+        {/* Expenses Trend Chart */}
+        <Card className="card-hover">
+          <CardHeader>
+            <CardTitle className="flex items-center text-red-700">
+              <DollarSign className="h-5 w-5 mr-2" />
+              Expenses Trend (Last 14 Days)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {expenseChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={expenseChartData}>
+                  <defs>
+                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Area type="monotone" dataKey="amount" stroke="#ef4444" fill="url(#expenseGradient)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-gray-500">
+                No expense data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Production Trend Chart */}
+        <Card className="card-hover">
+          <CardHeader>
+            <CardTitle className="flex items-center text-green-700">
+              <Factory className="h-5 w-5 mr-2" />
+              Production Trend (Last 14 Days)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {productionChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={productionChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="completed" fill="#10b981" name="Completed" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="lost" fill="#ef4444" name="Lost" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-gray-500">
+                No production data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expenses by Category Pie Chart */}
+        <Card className="card-hover">
+          <CardHeader>
+            <CardTitle className="flex items-center text-purple-700">
+              <ShoppingCart className="h-5 w-5 mr-2" />
+              Expenses by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {expensePieData.length > 0 ? (
+              <div className="flex items-center">
+                <ResponsiveContainer width="60%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={expensePieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {expensePieData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="w-[40%] space-y-1">
+                  {expensePieData.slice(0, 6).map((entry, index) => (
+                    <div key={entry.name} className="flex items-center text-xs">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                      />
+                      <span className="truncate flex-1">{entry.name}</span>
+                      <span className="font-medium ml-1">{((entry.value / totalExpenses) * 100).toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-gray-500">
+                No expense data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Stats */}
+        <Card className="card-hover bg-gradient-to-br from-blue-50 to-indigo-50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-blue-700">
+              <TrendingUp className="h-5 w-5 mr-2" />
+              Quick Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-white rounded-lg shadow-sm hover-lift">
+                <p className="text-xs text-gray-500">Avg Daily Expense</p>
+                <p className="text-xl font-bold text-red-600">
+                  {formatCurrency(expenseChartData.length > 0 ? totalExpenses / expenseChartData.length : 0)}
+                </p>
+              </div>
+              <div className="p-4 bg-white rounded-lg shadow-sm hover-lift">
+                <p className="text-xs text-gray-500">Avg Daily Production</p>
+                <p className="text-xl font-bold text-green-600">
+                  {productionChartData.length > 0 ? Math.round(totalProduced / productionChartData.length) : 0} units
+                </p>
+              </div>
+              <div className="p-4 bg-white rounded-lg shadow-sm hover-lift">
+                <p className="text-xs text-gray-500">Success Rate</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {totalProduced + totalLost > 0 ? ((totalProduced / (totalProduced + totalLost)) * 100).toFixed(1) : 100}%
+                </p>
+              </div>
+              <div className="p-4 bg-white rounded-lg shadow-sm hover-lift">
+                <p className="text-xs text-gray-500">Order Completion</p>
+                <p className="text-xl font-bold text-purple-600">
+                  {orders.length > 0 ? ((completedOrders / orders.length) * 100).toFixed(0) : 0}%
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
