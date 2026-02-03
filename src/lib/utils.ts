@@ -14,10 +14,11 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('ar-DZ', {
-    style: 'currency',
-    currency: 'DZD',
-  }).format(amount);
+  return new Intl.NumberFormat('fr-DZ', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount) + ' DZ';
 }
 
 export function getStepLabel(step: string): string {
