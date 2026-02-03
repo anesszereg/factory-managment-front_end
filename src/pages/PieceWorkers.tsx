@@ -505,7 +505,7 @@ export default function PieceWorkers() {
           <head>
             <title>Bon #${receipt.id}</title>
             <style>
-              @page { size: A4; margin: 10mm; }
+              @page { size: A4; margin: 0; }
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { 
                 font-family: 'Courier New', monospace; 
@@ -516,8 +516,10 @@ export default function PieceWorkers() {
               }
               .receipt-container {
                 width: 80mm;
-                padding: 3mm;
+                padding: 4mm;
                 line-height: 1.3;
+                border: 2px solid #000;
+                margin: 5mm;
               }
               .title {
                 text-align: center;
