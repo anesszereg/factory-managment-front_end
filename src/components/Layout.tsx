@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -26,6 +26,14 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  // Page transition effect
+  useEffect(() => {
+    setIsPageTransitioning(true);
+    const timer = setTimeout(() => setIsPageTransitioning(false), 50);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -43,12 +51,13 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300",
+          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       {/* Sidebar */}
       <aside
@@ -82,25 +91,39 @@ export function Layout({ children }: LayoutProps) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
-            {navigation.map((item) => {
+            {navigation.map((item, index) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
               return (
-                <li key={item.name}>
+                <li 
+                  key={item.name}
+                  className="animate-fadeIn"
+                  style={{ animationDelay: `${index * 0.03}s` }}
+                >
                   <Link
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'group flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100',
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-50 hover:translate-x-1',
                       sidebarCollapsed && 'lg:justify-center lg:px-2'
                     )}
                     title={sidebarCollapsed ? item.name : undefined}
                   >
-                    <Icon className={cn('h-5 w-5 flex-shrink-0', !sidebarCollapsed && 'mr-3')} />
-                    <span className={cn(sidebarCollapsed && 'lg:hidden')}>{item.name}</span>
+                    <Icon className={cn(
+                      'h-5 w-5 flex-shrink-0 transition-transform duration-200',
+                      !sidebarCollapsed && 'mr-3',
+                      !isActive && 'group-hover:scale-110'
+                    )} />
+                    <span className={cn(
+                      'transition-all duration-200',
+                      sidebarCollapsed && 'lg:hidden'
+                    )}>{item.name}</span>
+                    {isActive && !sidebarCollapsed && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    )}
                   </Link>
                 </li>
               );
@@ -112,13 +135,13 @@ export function Layout({ children }: LayoutProps) {
         <div className="hidden lg:block p-3 border-t border-gray-200">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="w-full flex items-center justify-center p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            className="w-full flex items-center justify-center p-2 rounded-lg text-gray-500 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-50 transition-all duration-200 hover:text-gray-700"
           >
             {sidebarCollapsed ? (
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-5 w-5 transition-transform duration-200 hover:translate-x-0.5" />
             ) : (
               <>
-                <ChevronLeft className="h-5 w-5 mr-2" />
+                <ChevronLeft className="h-5 w-5 mr-2 transition-transform duration-200" />
                 <span className="text-sm">Collapse</span>
               </>
             )}
@@ -144,7 +167,14 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Page content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-          <div className="max-w-7xl mx-auto">
+          <div 
+            className={cn(
+              "max-w-7xl mx-auto transition-all duration-300 ease-out",
+              isPageTransitioning 
+                ? "opacity-0 translate-y-2" 
+                : "opacity-100 translate-y-0"
+            )}
+          >
             {children}
           </div>
         </main>
