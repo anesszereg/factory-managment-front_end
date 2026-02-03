@@ -20,10 +20,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { PageLoading } from '../components/ui/Loading';
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+  return new Intl.NumberFormat('fr-DZ', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount) + ' DZ';
 };
 
 export default function PieceWorkers() {
@@ -504,11 +505,16 @@ export default function PieceWorkers() {
           <head>
             <title>Bon #${receipt.id}</title>
             <style>
-              @page { size: 80mm 110mm; margin: 0; }
+              @page { size: A4; margin: 10mm; }
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { 
                 font-family: 'Courier New', monospace; 
                 font-size: 10px;
+                display: flex;
+                justify-content: flex-end;
+                align-items: flex-start;
+              }
+              .receipt-container {
                 width: 80mm;
                 padding: 3mm;
                 line-height: 1.3;
@@ -585,13 +591,15 @@ export default function PieceWorkers() {
               }
               @media print { 
                 body { 
-                  width: 80mm;
-                  padding: 3mm;
+                  display: flex;
+                  justify-content: flex-end;
+                  align-items: flex-start;
                 }
               }
             </style>
           </head>
           <body>
+            <div class="receipt-container">
             <div class="title">BON DE TRAVAIL</div>
             <div class="info-center">Travailleur: ${worker?.firstName} ${worker?.lastName}</div>
             <div class="info-center">Date: ${format(new Date(receipt.date), 'dd/MM/yyyy HH:mm')}</div>
@@ -643,6 +651,7 @@ export default function PieceWorkers() {
             <div class="footer">
               <p>Merci pour votre confiance</p>
               <p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+            </div>
             </div>
           </body>
         </html>
