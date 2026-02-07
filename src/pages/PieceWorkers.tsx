@@ -61,6 +61,17 @@ export default function PieceWorkers() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [showWorkerSummary, setShowWorkerSummary] = useState(false);
   const [summaryWorker, setSummaryWorker] = useState<PieceWorker | null>(null);
+  const [showWorkerPaymentDialog, setShowWorkerPaymentDialog] = useState(false);
+  const [workerPaymentAmount, setWorkerPaymentAmount] = useState(0);
+  const [lastWorkerPayment, setLastWorkerPayment] = useState<{
+    worker: PieceWorker;
+    amount: number;
+    date: Date;
+    previousBalance: number;
+    newBalance: number;
+    paidReceipts: { id: number; amount: number }[];
+  } | null>(null);
+  const [showPaymentReceipt, setShowPaymentReceipt] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -211,6 +222,228 @@ export default function PieceWorkers() {
       partPaidCount,
       notPaidCount,
     };
+  };
+
+  // Get selected worker's balance calculations
+  const getSelectedWorkerBalance = () => {
+    if (!selectedWorker) return { totalAmount: 0, totalPaid: 0, totalRemaining: 0, unpaidReceipts: [] };
+    
+    const workerReceipts = receipts.filter(r => r.pieceWorkerId === selectedWorker.id);
+    const unpaidReceipts = workerReceipts.filter(r => r.paymentStatus !== PaymentStatus.PAID);
+    const totalAmount = workerReceipts.reduce((sum, r) => sum + r.totalAmount, 0);
+    const totalPaid = workerReceipts.reduce((sum, r) => sum + r.paidAmount, 0);
+    const totalRemaining = totalAmount - totalPaid;
+    
+    return { totalAmount, totalPaid, totalRemaining, unpaidReceipts };
+  };
+
+  // Open worker payment dialog
+  const openWorkerPayment = () => {
+    if (!selectedWorker) {
+      toast.error('Please select a worker first');
+      return;
+    }
+    const balance = getSelectedWorkerBalance();
+    if (balance.totalRemaining <= 0) {
+      toast.error('This worker has no outstanding balance');
+      return;
+    }
+    setWorkerPaymentAmount(0);
+    setShowWorkerPaymentDialog(true);
+  };
+
+  // Handle worker payment - distributes payment across unpaid receipts
+  const handleWorkerPayment = async () => {
+    if (!selectedWorker || workerPaymentAmount <= 0) return;
+    
+    const balance = getSelectedWorkerBalance();
+    if (workerPaymentAmount > balance.totalRemaining) {
+      toast.error(`Payment amount exceeds remaining balance of ${formatCurrency(balance.totalRemaining)}`);
+      return;
+    }
+
+    const loadingToast = toast.loading('Processing payment...');
+    
+    try {
+      let remainingPayment = workerPaymentAmount;
+      const paidReceipts: { id: number; amount: number }[] = [];
+      
+      // Sort unpaid receipts by date (oldest first)
+      const sortedUnpaid = [...balance.unpaidReceipts].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      // Distribute payment across receipts
+      for (const receipt of sortedUnpaid) {
+        if (remainingPayment <= 0) break;
+        
+        const receiptRemaining = receipt.totalAmount - receipt.paidAmount;
+        const paymentForReceipt = Math.min(remainingPayment, receiptRemaining);
+        
+        if (paymentForReceipt > 0) {
+          await dailyPieceReceiptsApi.addPayment(receipt.id, paymentForReceipt);
+          paidReceipts.push({ id: receipt.id, amount: paymentForReceipt });
+          remainingPayment -= paymentForReceipt;
+        }
+      }
+      
+      // Store payment info for receipt
+      setLastWorkerPayment({
+        worker: selectedWorker,
+        amount: workerPaymentAmount,
+        date: new Date(),
+        previousBalance: balance.totalRemaining,
+        newBalance: balance.totalRemaining - workerPaymentAmount,
+        paidReceipts,
+      });
+      
+      toast.success('Payment processed successfully', { id: loadingToast });
+      setShowWorkerPaymentDialog(false);
+      setShowPaymentReceipt(true);
+      fetchReceipts();
+    } catch (error) {
+      toast.error('Failed to process payment', { id: loadingToast });
+    }
+  };
+
+  // Print worker payment receipt
+  const printWorkerPaymentReceipt = () => {
+    if (!lastWorkerPayment) return;
+    
+    const { worker, amount, date, previousBalance, newBalance, paidReceipts } = lastWorkerPayment;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Payment Receipt - ${worker.firstName} ${worker.lastName}</title>
+            <style>
+              @page { size: A4; margin: 0; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                font-family: 'Courier New', monospace; 
+                font-size: 11px;
+                display: flex;
+                justify-content: flex-end;
+                align-items: flex-start;
+              }
+              .receipt-container {
+                width: 80mm;
+                padding: 5mm;
+                line-height: 1.4;
+                border: 2px solid #000;
+                margin: 5mm;
+              }
+              .title {
+                text-align: center;
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 3mm;
+                border-bottom: 2px solid #000;
+                padding-bottom: 2mm;
+              }
+              .info-row {
+                display: flex;
+                justify-content: space-between;
+                margin: 1.5mm 0;
+              }
+              .section {
+                margin: 3mm 0;
+                padding: 2mm 0;
+                border-top: 1px dashed #000;
+              }
+              .amount-box {
+                background: #f0f0f0;
+                padding: 3mm;
+                text-align: center;
+                margin: 3mm 0;
+                border: 1px solid #000;
+              }
+              .amount-value {
+                font-size: 16px;
+                font-weight: bold;
+              }
+              .balance-row {
+                display: flex;
+                justify-content: space-between;
+                padding: 1mm 0;
+              }
+              .balance-row.highlight {
+                font-weight: bold;
+                font-size: 12px;
+              }
+              .footer {
+                text-align: center;
+                font-size: 9px;
+                margin-top: 4mm;
+                padding-top: 2mm;
+                border-top: 1px dashed #000;
+                color: #666;
+              }
+              @media print { 
+                body { 
+                  display: flex;
+                  justify-content: flex-end;
+                  align-items: flex-start;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="receipt-container">
+              <div class="title">REÇU DE PAIEMENT</div>
+              
+              <div class="info-row">
+                <span>Date:</span>
+                <span>${format(date, 'dd/MM/yyyy HH:mm')}</span>
+              </div>
+              <div class="info-row">
+                <span>Travailleur:</span>
+                <span>${worker.firstName} ${worker.lastName}</span>
+              </div>
+              
+              <div class="amount-box">
+                <div>Montant Payé</div>
+                <div class="amount-value">${formatCurrency(amount)}</div>
+              </div>
+              
+              <div class="section">
+                <div class="balance-row">
+                  <span>Solde Précédent:</span>
+                  <span>${formatCurrency(previousBalance)}</span>
+                </div>
+                <div class="balance-row">
+                  <span>Paiement:</span>
+                  <span>- ${formatCurrency(amount)}</span>
+                </div>
+                <div class="balance-row highlight">
+                  <span>Nouveau Solde:</span>
+                  <span>${formatCurrency(newBalance)}</span>
+                </div>
+              </div>
+              
+              <div class="section">
+                <div style="font-weight: bold; margin-bottom: 2mm;">Bons Payés (${paidReceipts.length}):</div>
+                ${paidReceipts.map(pr => `
+                  <div class="info-row" style="font-size: 9px;">
+                    <span>Bon #${pr.id}</span>
+                    <span>${formatCurrency(pr.amount)}</span>
+                  </div>
+                `).join('')}
+              </div>
+              
+              <div class="footer">
+                <p>Merci pour votre travail</p>
+                <p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   const printWorkerSummary = () => {
@@ -701,6 +934,15 @@ export default function PieceWorkers() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
+          <Button 
+            className="w-full sm:w-auto" 
+            variant="outline" 
+            onClick={openWorkerPayment}
+            disabled={!selectedWorker}
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay Worker
+          </Button>
           <Button className="w-full sm:w-auto" variant="outline" onClick={() => openNewReceipt()}>
             <Receipt className="h-4 w-4 mr-2" />
             New Receipt
@@ -751,31 +993,74 @@ export default function PieceWorkers() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Today's Payout</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountToday)}</p>
-                <p className="text-xs text-gray-500 mt-1">total amount</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Show selected worker balance or today's payout */}
+        {selectedWorker ? (
+          <>
+            <Card className="border-2 border-green-200 bg-green-50/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600">
+                      {selectedWorker.firstName}'s Earned
+                    </p>
+                    <p className="text-2xl font-bold text-green-700 mt-1">
+                      {formatCurrency(getSelectedWorkerBalance().totalAmount)}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">total earned</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Filtered Total</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountFiltered)}</p>
-                <p className="text-xs text-gray-500 mt-1">{filteredReceipts.length} receipts</p>
-              </div>
-              <Calendar className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="border-2 border-red-200 bg-red-50/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-600">
+                      {selectedWorker.firstName}'s Balance
+                    </p>
+                    <p className="text-2xl font-bold text-red-700 mt-1">
+                      {formatCurrency(getSelectedWorkerBalance().totalRemaining)}
+                    </p>
+                    <p className="text-xs text-red-600 mt-1">
+                      {getSelectedWorkerBalance().unpaidReceipts.length} unpaid receipts
+                    </p>
+                  </div>
+                  <CreditCard className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Today's Payout</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountToday)}</p>
+                    <p className="text-xs text-gray-500 mt-1">total amount</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Filtered Total</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountFiltered)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{filteredReceipts.length} receipts</p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
@@ -1449,6 +1734,159 @@ export default function PieceWorkers() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Worker Payment Dialog */}
+      <Dialog open={showWorkerPaymentDialog} onOpenChange={setShowWorkerPaymentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader onClose={() => setShowWorkerPaymentDialog(false)}>
+            <DialogTitle>Pay Worker</DialogTitle>
+          </DialogHeader>
+          {selectedWorker && (() => {
+            const balance = getSelectedWorkerBalance();
+            return (
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600">Worker</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {selectedWorker.firstName} {selectedWorker.lastName}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-green-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-green-600">Total Earned</p>
+                    <p className="text-sm font-bold text-green-700">{formatCurrency(balance.totalAmount)}</p>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-blue-600">Total Paid</p>
+                    <p className="text-sm font-bold text-blue-700">{formatCurrency(balance.totalPaid)}</p>
+                  </div>
+                  <div className="bg-red-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-red-600">Balance Due</p>
+                    <p className="text-sm font-bold text-red-700">{formatCurrency(balance.totalRemaining)}</p>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 p-3 rounded-lg text-sm text-yellow-800">
+                  <p><strong>{balance.unpaidReceipts.length}</strong> unpaid receipts will be paid (oldest first)</p>
+                </div>
+
+                <Input
+                  label="Payment Amount *"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={balance.totalRemaining}
+                  value={workerPaymentAmount || ''}
+                  onChange={(e) => setWorkerPaymentAmount(parseFloat(e.target.value) || 0)}
+                  placeholder={`Max: ${formatCurrency(balance.totalRemaining)}`}
+                />
+
+                {workerPaymentAmount > 0 && (
+                  <div className="bg-gray-100 p-3 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span>Current Balance:</span>
+                      <span className="font-medium">{formatCurrency(balance.totalRemaining)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Payment:</span>
+                      <span className="font-medium">- {formatCurrency(workerPaymentAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold border-t pt-1 mt-1">
+                      <span>New Balance:</span>
+                      <span className={balance.totalRemaining - workerPaymentAmount <= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency(Math.max(0, balance.totalRemaining - workerPaymentAmount))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" onClick={() => setShowWorkerPaymentDialog(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => setWorkerPaymentAmount(balance.totalRemaining)} 
+                    variant="outline"
+                    className="text-blue-600 border-blue-600"
+                  >
+                    Pay All
+                  </Button>
+                  <Button 
+                    onClick={handleWorkerPayment} 
+                    disabled={workerPaymentAmount <= 0 || workerPaymentAmount > balance.totalRemaining}
+                    className="flex-1"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Receipt Dialog */}
+      <Dialog open={showPaymentReceipt} onOpenChange={setShowPaymentReceipt}>
+        <DialogContent className="max-w-md">
+          <DialogHeader onClose={() => setShowPaymentReceipt(false)}>
+            <DialogTitle>Payment Successful</DialogTitle>
+          </DialogHeader>
+          {lastWorkerPayment && (
+            <div className="space-y-4">
+              <div className="bg-green-50 p-4 rounded-lg text-center">
+                <div className="text-green-600 text-sm">Payment Processed</div>
+                <div className="text-2xl font-bold text-green-700">
+                  {formatCurrency(lastWorkerPayment.amount)}
+                </div>
+                <div className="text-sm text-green-600 mt-1">
+                  to {lastWorkerPayment.worker.firstName} {lastWorkerPayment.worker.lastName}
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Previous Balance:</span>
+                  <span className="font-medium">{formatCurrency(lastWorkerPayment.previousBalance)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Payment:</span>
+                  <span className="font-medium text-green-600">- {formatCurrency(lastWorkerPayment.amount)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold border-t pt-2">
+                  <span>New Balance:</span>
+                  <span className={lastWorkerPayment.newBalance <= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {formatCurrency(lastWorkerPayment.newBalance)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-600">
+                <p className="font-medium mb-1">Receipts paid ({lastWorkerPayment.paidReceipts.length}):</p>
+                <div className="max-h-24 overflow-y-auto bg-gray-50 rounded p-2">
+                  {lastWorkerPayment.paidReceipts.map((pr, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span>Receipt #{pr.id}</span>
+                      <span>{formatCurrency(pr.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowPaymentReceipt(false)} className="flex-1">
+                  Close
+                </Button>
+                <Button onClick={printWorkerPaymentReceipt} className="flex-1">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Receipt
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
