@@ -38,6 +38,15 @@ export function Materials() {
   const [consumptionEndDate, setConsumptionEndDate] = useState('');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [pieceWorkers, setPieceWorkers] = useState<PieceWorker[]>([]);
+  
+  // Multi-purchase state
+  const [purchaseItems, setPurchaseItems] = useState<{
+    materialId: number;
+    supplier: string;
+    quantity: number;
+    unitPrice: number;
+  }[]>([{ materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     loadData();
@@ -154,6 +163,69 @@ export function Materials() {
       console.error('Failed to save purchase:', error);
       toast.error('Failed to save purchase. Please try again.', { id: loadingToast });
     }
+  };
+
+  // Handle multiple purchases at once
+  const handleCreateMultiplePurchases = async () => {
+    // Filter valid items (must have material, quantity, and price)
+    const validItems = purchaseItems.filter(
+      item => item.materialId > 0 && item.quantity > 0 && item.unitPrice > 0
+    );
+    
+    if (validItems.length === 0) {
+      toast.error('Please add at least one valid purchase item');
+      return;
+    }
+    
+    const loadingToast = toast.loading(`Recording ${validItems.length} purchase(s)...`);
+    
+    try {
+      // Create all purchases in parallel
+      await Promise.all(
+        validItems.map(item =>
+          materialPurchasesApi.create({
+            materialId: item.materialId,
+            date: purchaseDate,
+            supplier: item.supplier,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
+          })
+        )
+      );
+      
+      toast.success(`${validItems.length} purchase(s) recorded successfully!`, { id: loadingToast });
+      setShowPurchaseForm(false);
+      resetPurchaseForm();
+      loadData();
+    } catch (error) {
+      console.error('Failed to save purchases:', error);
+      toast.error('Failed to save purchases. Please try again.', { id: loadingToast });
+    }
+  };
+
+  const resetPurchaseForm = () => {
+    setPurchaseItems([{ materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+    setPurchaseDate(new Date().toISOString().split('T')[0]);
+    setEditingPurchase(null);
+  };
+
+  const addPurchaseItem = () => {
+    setPurchaseItems(prev => [...prev, { materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+  };
+
+  const removePurchaseItem = (index: number) => {
+    setPurchaseItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePurchaseItem = (index: number, field: string, value: string | number) => {
+    setPurchaseItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const getPurchaseTotal = () => {
+    return purchaseItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   };
 
   const handleDeletePurchase = async (id: number) => {
@@ -609,21 +681,23 @@ export function Materials() {
       </Dialog>
 
       <Dialog open={showPurchaseForm} onOpenChange={setShowPurchaseForm}>
-        <DialogContent>
+        <DialogContent className={editingPurchase ? '' : 'max-w-3xl w-[90vw]'}>
           <DialogHeader onClose={() => {
             setShowPurchaseForm(false);
-            setEditingPurchase(null);
+            resetPurchaseForm();
           }}>
-            <DialogTitle>{editingPurchase ? 'Edit Purchase' : 'Record Purchase'}</DialogTitle>
+            <DialogTitle>{editingPurchase ? 'Edit Purchase' : 'Record Purchases'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreatePurchase} className="space-y-4">
+          
+          {editingPurchase ? (
+            // Single edit form
+            <form onSubmit={handleCreatePurchase} className="space-y-4">
               <Select
                 label="Material"
                 name="materialId"
                 required
-                disabled={!!editingPurchase}
-                defaultValue={editingPurchase?.materialId}
-                helperText="Select the material being purchased"
+                disabled
+                defaultValue={editingPurchase.materialId}
               >
                 <option value="">Select material</option>
                 {materials.map((material) => (
@@ -638,17 +712,15 @@ export function Materials() {
                 name="supplier"
                 required
                 placeholder="Supplier name"
-                defaultValue={editingPurchase?.supplier}
-                helperText="Name of the supplier"
+                defaultValue={editingPurchase.supplier}
               />
               <Input
                 label="Date"
                 type="date"
                 name="date"
                 required
-                disabled={!!editingPurchase}
-                defaultValue={editingPurchase ? editingPurchase.date.split('T')[0] : new Date().toISOString().split('T')[0]}
-                helperText="Purchase date"
+                disabled
+                defaultValue={editingPurchase.date.split('T')[0]}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Input
@@ -659,8 +731,7 @@ export function Materials() {
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
-                  defaultValue={editingPurchase?.quantity}
-                  helperText="Amount purchased"
+                  defaultValue={editingPurchase.quantity}
                 />
                 <Input
                   label="Unit Price"
@@ -670,20 +741,129 @@ export function Materials() {
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
-                  defaultValue={editingPurchase?.unitPrice}
-                  helperText="Price per unit"
+                  defaultValue={editingPurchase.unitPrice}
                 />
               </div>
               <div className="flex justify-end space-x-3">
                 <Button type="button" variant="outline" onClick={() => {
                   setShowPurchaseForm(false);
-                  setEditingPurchase(null);
+                  resetPurchaseForm();
                 }}>
                   Cancel
                 </Button>
-                <Button type="submit">{editingPurchase ? 'Update Purchase' : 'Record Purchase'}</Button>
+                <Button type="submit">Update Purchase</Button>
               </div>
             </form>
+          ) : (
+            // Multi-purchase form
+            <div className="space-y-4">
+              <Input
+                label="Purchase Date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                helperText="Date for all purchases"
+              />
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold text-gray-900">Purchase Items</h3>
+                  <Button type="button" size="sm" variant="outline" onClick={addPurchaseItem}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {purchaseItems.map((item, index) => (
+                    <div key={index} className="p-3 bg-gray-50 rounded-lg border">
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-4">
+                          <Select
+                            label={index === 0 ? "Material *" : undefined}
+                            value={item.materialId}
+                            onChange={(e) => updatePurchaseItem(index, 'materialId', parseInt(e.target.value) || 0)}
+                          >
+                            <option value={0}>Select material</option>
+                            {materials.map((material) => (
+                              <option key={material.id} value={material.id}>
+                                {material.name} ({getUnitLabel(material.unit)})
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                        <div className="col-span-3">
+                          <Input
+                            label={index === 0 ? "Supplier" : undefined}
+                            type="text"
+                            placeholder="Supplier"
+                            value={item.supplier}
+                            onChange={(e) => updatePurchaseItem(index, 'supplier', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            label={index === 0 ? "Qty *" : undefined}
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            placeholder="0.00"
+                            value={item.quantity || ''}
+                            onChange={(e) => updatePurchaseItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            label={index === 0 ? "Price *" : undefined}
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            placeholder="0.00"
+                            value={item.unitPrice || ''}
+                            onChange={(e) => updatePurchaseItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-1 flex items-center justify-end gap-1">
+                          <span className="text-xs font-medium text-gray-600 hidden sm:block">
+                            {formatCurrency(item.quantity * item.unitPrice)}
+                          </span>
+                          {purchaseItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePurchaseItem(index)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-green-700">Total ({purchaseItems.filter(i => i.materialId > 0 && i.quantity > 0 && i.unitPrice > 0).length} items)</p>
+                  <p className="text-xl font-bold text-green-800">{formatCurrency(getPurchaseTotal())}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <Button type="button" variant="outline" onClick={() => {
+                  setShowPurchaseForm(false);
+                  resetPurchaseForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateMultiplePurchases}>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Record {purchaseItems.filter(i => i.materialId > 0 && i.quantity > 0 && i.unitPrice > 0).length} Purchase(s)
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
