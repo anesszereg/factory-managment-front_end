@@ -363,16 +363,27 @@ export default function Suppliers() {
     if (!selectedSupplier) return;
     const stats = getSupplierStats();
     
-    const ordersHtml = stats.orders.map(order => `
-      <tr>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${format(new Date(order.orderDate), 'dd/MM/yyyy')}</td>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee;">${order.items?.map(i => i.description).join(', ') || '-'}</td>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(order.totalAmount)}</td>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(order.paidAmount)}</td>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(order.totalAmount - order.paidAmount)}</td>
-        <td style="padding: 4px 8px; border-bottom: 1px solid #eee; text-align: center;">${getStatusLabel(order.status)}</td>
-      </tr>
-    `).join('');
+    const ordersHtml = stats.orders.map(order => {
+      const itemsDetail = order.items?.map(i => 
+        `<div style="padding: 2px 0; border-bottom: 1px dashed #e0e0e0;">
+          <span style="font-weight: 500;">${i.description}</span>
+          <span style="color: #666; margin-left: 6px;">×${i.quantity}</span>
+          <span style="color: #666; margin-left: 6px;">@ ${formatCurrency(i.unitPrice)}</span>
+          <span style="float: right; font-weight: 500;">${formatCurrency(i.totalPrice)}</span>
+        </div>`
+      ).join('') || '<div style="color: #999;">-</div>';
+      
+      return `
+        <tr>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top;">${format(new Date(order.orderDate), 'dd/MM/yyyy')}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: top; font-size: 10px;">${itemsDetail}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top; font-weight: bold;">${formatCurrency(order.totalAmount)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top; color: green;">${formatCurrency(order.paidAmount)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top; color: red;">${formatCurrency(order.totalAmount - order.paidAmount)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #ddd; text-align: center; vertical-align: top;">${getStatusLabel(order.status)}</td>
+        </tr>
+      `;
+    }).join('');
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -958,7 +969,7 @@ export default function Suppliers() {
 
       {/* Order Form Dialog */}
       <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl w-full">
           <DialogHeader onClose={() => {
             setShowOrderForm(false);
             setEditingOrder(null);
@@ -967,7 +978,7 @@ export default function Suppliers() {
             <DialogTitle>{editingOrder ? 'Edit Order' : 'New Order'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleOrderSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select
                 label="Supplier"
                 name="supplierId"
@@ -1000,10 +1011,10 @@ export default function Suppliers() {
                 </div>
                 
                 {orderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-3">
+                  <div key={index} className="border rounded-lg p-3 sm:p-0 sm:border-0 space-y-2 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end">
+                    <div className="sm:col-span-3">
                       <Select
-                        label={index === 0 ? "Material" : ""}
+                        label={index === 0 || window.innerWidth < 640 ? "Material" : ""}
                         value={item.materialId}
                         onChange={(e) => updateOrderItem(index, 'materialId', e.target.value)}
                       >
@@ -1013,38 +1024,40 @@ export default function Suppliers() {
                         ))}
                       </Select>
                     </div>
-                    <div className="col-span-4">
+                    <div className="sm:col-span-4">
                       <Input
-                        label={index === 0 ? "Description" : ""}
+                        label={index === 0 || window.innerWidth < 640 ? "Description" : ""}
                         value={item.description}
                         onChange={(e) => updateOrderItem(index, 'description', e.target.value)}
                         placeholder="Item description"
                         required
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Input
-                        label={index === 0 ? "Qty" : ""}
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateOrderItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                        required
-                      />
+                    <div className="grid grid-cols-2 gap-2 sm:contents">
+                      <div className="sm:col-span-2">
+                        <Input
+                          label={index === 0 || window.innerWidth < 640 ? "Qty" : ""}
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => updateOrderItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Input
+                          label={index === 0 || window.innerWidth < 640 ? "Price" : ""}
+                          type="number"
+                          value={item.unitPrice}
+                          onChange={(e) => updateOrderItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <Input
-                        label={index === 0 ? "Price" : ""}
-                        type="number"
-                        value={item.unitPrice}
-                        onChange={(e) => updateOrderItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                    <div className="col-span-1">
+                    <div className="sm:col-span-1 flex justify-end">
                       {orderItems.length > 1 && (
                         <Button
                           type="button"
@@ -1175,7 +1188,7 @@ export default function Suppliers() {
 
       {/* Supplier Summary Dialog */}
       <Dialog open={showSupplierSummary} onOpenChange={setShowSupplierSummary}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
           <DialogHeader onClose={() => {
             setShowSupplierSummary(false);
             setSelectedSupplier(null);
@@ -1275,7 +1288,7 @@ export default function Suppliers() {
 
       {/* Payment History Dialog */}
       <Dialog open={showPaymentHistory} onOpenChange={setShowPaymentHistory}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-full">
           <DialogHeader onClose={() => {
             setShowPaymentHistory(false);
             setSelectedOrderForHistory(null);

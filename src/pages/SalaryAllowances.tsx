@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { salaryAllowancesApi, employeesApi } from '../services/api';
 import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo } from '../types';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, differenceInDays } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
 
 const SalaryAllowances: React.FC = () => {
@@ -22,10 +23,12 @@ const SalaryAllowances: React.FC = () => {
     amount: '',
     description: ''
   });
+  const [salarySummary, setSalarySummary] = useState<any>(null);
 
   useEffect(() => {
     fetchEmployees();
     fetchAllowances();
+    fetchSalarySummary();
   }, [filterEmployeeId, filterStartDate, filterEndDate]);
 
   useEffect(() => {
@@ -85,6 +88,29 @@ const SalaryAllowances: React.FC = () => {
     const now = new Date();
     setFilterStartDate(format(startOfMonth(now), 'yyyy-MM-dd'));
     setFilterEndDate(format(endOfMonth(now), 'yyyy-MM-dd'));
+  };
+
+  const fetchSalarySummary = async () => {
+    try {
+      const response = await employeesApi.getSalarySummary();
+      setSalarySummary(response.data);
+    } catch (error) {
+      console.error('Error fetching salary summary:', error);
+    }
+  };
+
+  // Get employees whose salary cycle ends within 5 days
+  const getPaymentAlerts = () => {
+    if (!salarySummary?.employees) return [];
+    const today = new Date();
+    return salarySummary.employees
+      .map((emp: any) => {
+        const cycleEnd = new Date(emp.salaryCycle.end);
+        const daysLeft = differenceInDays(cycleEnd, today);
+        return { ...emp, daysLeft, cycleEnd };
+      })
+      .filter((emp: any) => emp.daysLeft >= 0 && emp.daysLeft <= 5)
+      .sort((a: any, b: any) => a.daysLeft - b.daysLeft);
   };
 
   const fetchSalaryInfo = async (employeeId: number) => {
@@ -181,6 +207,70 @@ const SalaryAllowances: React.FC = () => {
         </button>
       </div>
 
+      {/* Salary Payment Alerts */}
+      {(() => {
+        const alerts = getPaymentAlerts();
+        if (alerts.length === 0) return null;
+        return (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">⚠️</span>
+              <h2 className="text-lg font-bold text-amber-900">Upcoming Salary Payments</h2>
+              <span className="ml-auto bg-amber-200 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">
+                {alerts.length} employee{alerts.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {alerts.map((emp: any) => (
+                <div
+                  key={emp.id}
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border ${
+                    emp.daysLeft === 0
+                      ? 'bg-red-50 border-red-300'
+                      : emp.daysLeft <= 2
+                        ? 'bg-orange-50 border-orange-300'
+                        : 'bg-yellow-50 border-yellow-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                      emp.daysLeft === 0 ? 'bg-red-500' : emp.daysLeft <= 2 ? 'bg-orange-500' : 'bg-yellow-500'
+                    }`}>
+                      {emp.firstName[0]}{emp.lastName[0]}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{emp.firstName} {emp.lastName}</p>
+                      <p className="text-xs text-gray-500">
+                        Cycle ends: {format(new Date(emp.salaryCycle.end), 'MMM dd, yyyy')}
+                        {emp.daysLeft === 0 && <span className="ml-1 text-red-600 font-bold">• TODAY!</span>}
+                        {emp.daysLeft === 1 && <span className="ml-1 text-orange-600 font-bold">• Tomorrow</span>}
+                        {emp.daysLeft > 1 && <span className="ml-1 text-amber-600 font-medium">• {emp.daysLeft} days left</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 sm:gap-6 pl-13 sm:pl-0">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Salary</p>
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(emp.monthlySalary)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Allowances</p>
+                      <p className="text-sm font-bold text-red-600">{formatCurrency(emp.totalAllowances)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Remaining</p>
+                      <p className={`text-sm font-bold ${emp.remainingSalary > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                        {formatCurrency(emp.remainingSalary)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
@@ -271,7 +361,7 @@ const SalaryAllowances: React.FC = () => {
                     <option value="">Select Employee</option>
                     {employees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
-                        {emp.firstName} {emp.lastName} - ${emp.monthlySalary}/month
+                        {emp.firstName} {emp.lastName} - {formatCurrency(emp.monthlySalary)}/month
                       </option>
                     ))}
                   </select>
@@ -352,7 +442,7 @@ const SalaryAllowances: React.FC = () => {
                       </p>
                     </div>
                     <p className="text-lg font-semibold text-green-600">
-                      ${allowance.amount.toFixed(2)}
+                      {formatCurrency(allowance.amount)}
                     </p>
                   </div>
                   {allowance.description && (
@@ -418,7 +508,7 @@ const SalaryAllowances: React.FC = () => {
                       </td>
                       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-green-600">
-                          ${allowance.amount.toFixed(2)}
+                          {formatCurrency(allowance.amount)}
                         </div>
                       </td>
                       <td className="px-4 lg:px-6 py-4">
@@ -490,19 +580,19 @@ const SalaryAllowances: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-600">Monthly Salary</span>
                       <span className="text-sm font-bold text-gray-900">
-                        ${salaryInfo.employee.monthlySalary.toFixed(2)}
+                        {formatCurrency(salaryInfo.employee.monthlySalary)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-600">Allowances</span>
                       <span className="text-sm font-semibold text-red-600">
-                        -${salaryInfo.totalAllowances.toFixed(2)}
+                        -{formatCurrency(salaryInfo.totalAllowances)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center pt-1 border-t border-blue-200">
                       <span className="text-xs font-medium text-gray-700">Remaining</span>
                       <span className="text-lg font-bold text-green-600">
-                        ${salaryInfo.remainingSalary.toFixed(2)}
+                        {formatCurrency(salaryInfo.remainingSalary)}
                       </span>
                     </div>
                   </div>
@@ -516,7 +606,7 @@ const SalaryAllowances: React.FC = () => {
                               {format(new Date(allowance.date), 'MMM dd')} - {allowance.description || 'Allowance'}
                             </span>
                             <span className="font-medium text-gray-900">
-                              ${allowance.amount.toFixed(2)}
+                              {formatCurrency(allowance.amount)}
                             </span>
                           </div>
                         ))}
@@ -538,19 +628,19 @@ const SalaryAllowances: React.FC = () => {
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-600">Monthly Salary</span>
                         <span className="text-sm font-bold text-gray-900">
-                          ${lastMonthSalaryInfo.employee.monthlySalary.toFixed(2)}
+                          {formatCurrency(lastMonthSalaryInfo.employee.monthlySalary)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-600">Allowances</span>
                         <span className="text-sm font-semibold text-red-600">
-                          -${lastMonthSalaryInfo.totalAllowances.toFixed(2)}
+                          -{formatCurrency(lastMonthSalaryInfo.totalAllowances)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-gray-200">
                         <span className="text-xs font-medium text-gray-700">Remaining</span>
                         <span className="text-lg font-bold text-green-600">
-                          ${lastMonthSalaryInfo.remainingSalary.toFixed(2)}
+                          {formatCurrency(lastMonthSalaryInfo.remainingSalary)}
                         </span>
                       </div>
                     </div>
@@ -564,7 +654,7 @@ const SalaryAllowances: React.FC = () => {
                                 {format(new Date(allowance.date), 'MMM dd')} - {allowance.description || 'Allowance'}
                               </span>
                               <span className="font-medium text-gray-900">
-                                ${allowance.amount.toFixed(2)}
+                                {formatCurrency(allowance.amount)}
                               </span>
                             </div>
                           ))}
