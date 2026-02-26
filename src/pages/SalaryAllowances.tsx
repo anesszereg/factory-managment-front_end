@@ -99,18 +99,23 @@ const SalaryAllowances: React.FC = () => {
     }
   };
 
-  // Get employees whose salary cycle ends within 5 days
+  // Get all employees with their salary cycle status, grouped by urgency
   const getPaymentAlerts = () => {
-    if (!salarySummary?.employees) return [];
+    if (!salarySummary?.employees) return { overdue: [], today: [], thisWeek: [], upcoming: [], later: [] };
     const today = new Date();
-    return salarySummary.employees
-      .map((emp: any) => {
-        const cycleEnd = new Date(emp.salaryCycle.end);
-        const daysLeft = differenceInDays(cycleEnd, today);
-        return { ...emp, daysLeft, cycleEnd };
-      })
-      .filter((emp: any) => emp.daysLeft >= 0 && emp.daysLeft <= 5)
-      .sort((a: any, b: any) => a.daysLeft - b.daysLeft);
+    const enriched = salarySummary.employees.map((emp: any) => {
+      const cycleEnd = new Date(emp.salaryCycle.end);
+      const daysLeft = differenceInDays(cycleEnd, today);
+      return { ...emp, daysLeft, cycleEnd };
+    });
+
+    return {
+      overdue: enriched.filter((e: any) => e.daysLeft < 0).sort((a: any, b: any) => a.daysLeft - b.daysLeft),
+      today: enriched.filter((e: any) => e.daysLeft === 0),
+      thisWeek: enriched.filter((e: any) => e.daysLeft >= 1 && e.daysLeft <= 7).sort((a: any, b: any) => a.daysLeft - b.daysLeft),
+      upcoming: enriched.filter((e: any) => e.daysLeft >= 8 && e.daysLeft <= 15).sort((a: any, b: any) => a.daysLeft - b.daysLeft),
+      later: enriched.filter((e: any) => e.daysLeft > 15).sort((a: any, b: any) => a.daysLeft - b.daysLeft),
+    };
   };
 
   const fetchSalaryInfo = async (employeeId: number) => {
@@ -210,31 +215,36 @@ const SalaryAllowances: React.FC = () => {
       {/* Salary Payment Alerts */}
       {(() => {
         const alerts = getPaymentAlerts();
-        if (alerts.length === 0) return null;
+        const allEmployees = [...alerts.overdue, ...alerts.today, ...alerts.thisWeek, ...alerts.upcoming, ...alerts.later];
+        if (allEmployees.length === 0) return null;
         return (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg p-4 sm:p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl">⚠️</span>
               <h2 className="text-lg font-bold text-amber-900">Upcoming Salary Payments</h2>
               <span className="ml-auto bg-amber-200 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">
-                {alerts.length} employee{alerts.length > 1 ? 's' : ''}
+                {allEmployees.length} employee{allEmployees.length > 1 ? 's' : ''}
               </span>
             </div>
             <div className="space-y-2">
-              {alerts.map((emp: any) => (
+              {allEmployees.map((emp: any) => (
                 <div
                   key={emp.id}
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border ${
-                    emp.daysLeft === 0
+                    emp.daysLeft < 0
                       ? 'bg-red-50 border-red-300'
-                      : emp.daysLeft <= 2
-                        ? 'bg-orange-50 border-orange-300'
-                        : 'bg-yellow-50 border-yellow-200'
+                      : emp.daysLeft === 0
+                        ? 'bg-red-50 border-red-300'
+                        : emp.daysLeft <= 2
+                          ? 'bg-orange-50 border-orange-300'
+                          : emp.daysLeft <= 7
+                            ? 'bg-yellow-50 border-yellow-200'
+                            : 'bg-white border-gray-200'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      emp.daysLeft === 0 ? 'bg-red-500' : emp.daysLeft <= 2 ? 'bg-orange-500' : 'bg-yellow-500'
+                      emp.daysLeft < 0 ? 'bg-red-600' : emp.daysLeft === 0 ? 'bg-red-500' : emp.daysLeft <= 2 ? 'bg-orange-500' : emp.daysLeft <= 7 ? 'bg-yellow-500' : 'bg-gray-400'
                     }`}>
                       {emp.firstName[0]}{emp.lastName[0]}
                     </div>
@@ -242,6 +252,7 @@ const SalaryAllowances: React.FC = () => {
                       <p className="font-semibold text-gray-900">{emp.firstName} {emp.lastName}</p>
                       <p className="text-xs text-gray-500">
                         Cycle ends: {format(new Date(emp.salaryCycle.end), 'MMM dd, yyyy')}
+                        {emp.daysLeft < 0 && <span className="ml-1 text-red-600 font-bold">• {Math.abs(emp.daysLeft)} days overdue!</span>}
                         {emp.daysLeft === 0 && <span className="ml-1 text-red-600 font-bold">• TODAY!</span>}
                         {emp.daysLeft === 1 && <span className="ml-1 text-orange-600 font-bold">• Tomorrow</span>}
                         {emp.daysLeft > 1 && <span className="ml-1 text-amber-600 font-medium">• {emp.daysLeft} days left</span>}

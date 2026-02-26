@@ -436,6 +436,156 @@ export function Materials() {
     toast.success('Excel file exported successfully!');
   };
 
+  // Export consumption grouped by person — each person gets a sheet with their details + material summary
+  const exportByPerson = () => {
+    const filteredData = consumption.filter(c => {
+      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
+      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+      return matchesMaterial && matchesEmployee && matchesDate;
+    });
+
+    // Group by person
+    const grouped: Record<string, { name: string; records: typeof filteredData }> = {};
+    filteredData.forEach(c => {
+      let key = 'Unknown';
+      let name = 'Unknown';
+      if (c.employee) {
+        key = `emp-${c.employee.id}`;
+        name = `${c.employee.firstName} ${c.employee.lastName}`;
+      } else if (c.pieceWorker) {
+        key = `pw-${c.pieceWorker.id}`;
+        name = `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)`;
+      }
+      if (!grouped[key]) grouped[key] = { name, records: [] };
+      grouped[key].records.push(c);
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    // Summary sheet first — each person with total qty per material
+    const summaryRows = Object.values(grouped).map(g => {
+      const row: any = { 'Person': g.name, 'Total Records': g.records.length };
+      materials.forEach(m => {
+        const qty = g.records.filter(r => r.materialId === m.id).reduce((s, r) => s + r.quantity, 0);
+        if (qty > 0) row[`${m.name} (${getUnitLabel(m.unit)})`] = Math.round(qty * 100) / 100;
+      });
+      return row;
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    // One sheet per person
+    Object.values(grouped).forEach(g => {
+      const sheetName = g.name.substring(0, 31); // Excel sheet name max 31 chars
+      const rows = g.records.map(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        return {
+          'Date': formatDate(c.date),
+          'Material': material?.name || 'Unknown',
+          'Unit': material ? getUnitLabel(material.unit) : '',
+          'Quantity': c.quantity,
+          'Notes': c.notes || '',
+        };
+      });
+
+      // Add material totals at the bottom
+      const materialTotals: Record<string, number> = {};
+      g.records.forEach(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        const key = material?.name || 'Unknown';
+        materialTotals[key] = (materialTotals[key] || 0) + c.quantity;
+      });
+      rows.push({ 'Date': '', 'Material': '', 'Unit': '', 'Quantity': 0 as any, 'Notes': '' });
+      rows.push({ 'Date': '--- TOTALS ---' as any, 'Material': 'Material', 'Unit': '', 'Quantity': 'Total Qty' as any, 'Notes': '' });
+      Object.entries(materialTotals).forEach(([mat, qty]) => {
+        rows.push({ 'Date': '' as any, 'Material': mat, 'Unit': '', 'Quantity': Math.round(qty * 100) / 100 as any, 'Notes': '' });
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const fileName = `consumption_by_person_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Exported consumption by person!');
+  };
+
+  // Export material summary — sum of each material across all filtered consumption
+  const exportMaterialSummary = () => {
+    const filteredData = consumption.filter(c => {
+      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
+      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+      return matchesMaterial && matchesEmployee && matchesDate;
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Material totals
+    const materialRows = materials.map(m => {
+      const records = filteredData.filter(c => c.materialId === m.id);
+      const totalQty = records.reduce((s, c) => s + c.quantity, 0);
+      if (totalQty === 0) return null;
+      // Count unique people
+      const uniquePeople = new Set(records.map(c => 
+        c.employee ? `emp-${c.employee.id}` : c.pieceWorker ? `pw-${c.pieceWorker.id}` : 'unknown'
+      ));
+      return {
+        'Material': m.name,
+        'Unit': getUnitLabel(m.unit),
+        'Total Quantity': Math.round(totalQty * 100) / 100,
+        'Number of Records': records.length,
+        'Number of People': uniquePeople.size,
+        'Current Stock': m.currentStock,
+      };
+    }).filter(Boolean);
+
+    const wsMaterials = XLSX.utils.json_to_sheet(materialRows as any[]);
+    XLSX.utils.book_append_sheet(wb, wsMaterials, 'Material Summary');
+
+    // Sheet 2: Material × Person breakdown
+    const people: { id: string; name: string }[] = [];
+    filteredData.forEach(c => {
+      if (c.employee) {
+        const key = `emp-${c.employee.id}`;
+        if (!people.find(p => p.id === key)) people.push({ id: key, name: `${c.employee.firstName} ${c.employee.lastName}` });
+      } else if (c.pieceWorker) {
+        const key = `pw-${c.pieceWorker.id}`;
+        if (!people.find(p => p.id === key)) people.push({ id: key, name: `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)` });
+      }
+    });
+
+    const breakdownRows = materials.flatMap(m => {
+      return people.map(p => {
+        const qty = filteredData.filter(c => {
+          if (c.materialId !== m.id) return false;
+          if (p.id.startsWith('emp-')) return c.employee?.id === parseInt(p.id.replace('emp-', ''));
+          if (p.id.startsWith('pw-')) return c.pieceWorker?.id === parseInt(p.id.replace('pw-', ''));
+          return false;
+        }).reduce((s, c) => s + c.quantity, 0);
+        if (qty === 0) return null;
+        return {
+          'Material': m.name,
+          'Unit': getUnitLabel(m.unit),
+          'Person': p.name,
+          'Total Quantity': Math.round(qty * 100) / 100,
+        };
+      }).filter(Boolean);
+    });
+
+    if (breakdownRows.length > 0) {
+      const wsBreakdown = XLSX.utils.json_to_sheet(breakdownRows as any[]);
+      XLSX.utils.book_append_sheet(wb, wsBreakdown, 'Material × Person');
+    }
+
+    const fileName = `material_summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Material summary exported!');
+  };
+
   const handleDeleteConsumption = async (id: number) => {
     if (!confirm('Are you sure you want to delete this consumption record?')) return;
     
@@ -1693,6 +1843,22 @@ export function Materials() {
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Export Monthly Stats
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={exportByPerson}
+                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export by Person
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={exportMaterialSummary}
+                    className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Material Summary
                   </Button>
                   <div className="ml-auto text-sm text-gray-600 flex items-center">
                     Showing {consumption.filter(c => {
