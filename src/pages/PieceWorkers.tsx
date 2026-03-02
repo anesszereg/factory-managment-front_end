@@ -1431,7 +1431,7 @@ export default function PieceWorkers() {
 
       {/* Receipt Form Dialog */}
       <Dialog open={showReceiptForm} onOpenChange={setShowReceiptForm}>
-        <DialogContent className="max-w-3xl w-[90vw]">
+        <DialogContent className="max-w-3xl w-full sm:w-[90vw]">
           <DialogHeader onClose={resetReceiptForm}>
             <DialogTitle>{editingReceipt ? 'Edit Receipt' : 'Create Daily Receipt'}</DialogTitle>
           </DialogHeader>
@@ -1605,7 +1605,7 @@ export default function PieceWorkers() {
 
       {/* Worker Summary Dialog */}
       <Dialog open={showWorkerSummary} onOpenChange={setShowWorkerSummary}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col">
+        <DialogContent className="max-w-4xl w-full sm:w-[95vw] h-[80vh] sm:h-[85vh] flex flex-col">
           <DialogHeader onClose={() => setShowWorkerSummary(false)}>
             <DialogTitle>
               {summaryWorker ? `${summaryWorker.firstName} ${summaryWorker.lastName} - Receipt Summary` : 'Worker Summary'}

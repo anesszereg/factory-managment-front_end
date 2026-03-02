@@ -291,6 +291,116 @@ export function Materials() {
     }
   };
 
+  // Export consumed products statistics by month (Jan-Dec)
+  const exportConsumedByMonth = () => {
+    const wb = XLSX.utils.book_new();
+    const currentYear = new Date().getFullYear();
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Sheet 1: Consumption by Material per Month
+    const materialMonthly = materials.map(m => {
+      const row: any = { 'Material': m.name, 'Unit': getUnitLabel(m.unit) };
+      let yearTotal = 0;
+      monthNames.forEach((month, idx) => {
+        const qty = consumption
+          .filter(c => c.materialId === m.id && new Date(c.date).getFullYear() === currentYear && new Date(c.date).getMonth() === idx)
+          .reduce((s, c) => s + c.quantity, 0);
+        row[month] = Math.round(qty * 100) / 100;
+        yearTotal += qty;
+      });
+      row['Year Total'] = Math.round(yearTotal * 100) / 100;
+      return row;
+    });
+    const wsMaterial = XLSX.utils.json_to_sheet(materialMonthly);
+    XLSX.utils.book_append_sheet(wb, wsMaterial, 'By Material');
+
+    // Sheet 2: Consumption by Person per Month
+    const people: { id: string; name: string }[] = [];
+    consumption.forEach(c => {
+      if (c.employee) {
+        const key = `emp-${c.employee.id}`;
+        if (!people.find(p => p.id === key)) {
+          people.push({ id: key, name: `${c.employee.firstName} ${c.employee.lastName}` });
+        }
+      } else if (c.pieceWorker) {
+        const key = `pw-${c.pieceWorker.id}`;
+        if (!people.find(p => p.id === key)) {
+          people.push({ id: key, name: `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)` });
+        }
+      }
+    });
+    const personMonthly = people.map(person => {
+      const row: any = { 'Person': person.name };
+      let yearTotal = 0;
+      monthNames.forEach((month, idx) => {
+        const qty = consumption
+          .filter(c => {
+            const d = new Date(c.date);
+            if (d.getFullYear() !== currentYear || d.getMonth() !== idx) return false;
+            if (person.id.startsWith('emp-')) return c.employee?.id === parseInt(person.id.replace('emp-', ''));
+            if (person.id.startsWith('pw-')) return c.pieceWorker?.id === parseInt(person.id.replace('pw-', ''));
+            return false;
+          })
+          .reduce((s, c) => s + c.quantity, 0);
+        row[month] = Math.round(qty * 100) / 100;
+        yearTotal += qty;
+      });
+      row['Year Total'] = Math.round(yearTotal * 100) / 100;
+      return row;
+    });
+    const wsPerson = XLSX.utils.json_to_sheet(personMonthly);
+    XLSX.utils.book_append_sheet(wb, wsPerson, 'By Person');
+
+    // Sheet 3: Monthly Totals Summary
+    const monthlyTotals = monthNames.map((month, idx) => {
+      const monthConsumption = consumption.filter(c => {
+        const d = new Date(c.date);
+        return d.getFullYear() === currentYear && d.getMonth() === idx;
+      });
+      const row: any = {
+        'Month': month,
+        'Total Records': monthConsumption.length,
+        'Total Quantity': Math.round(monthConsumption.reduce((s, c) => s + c.quantity, 0) * 100) / 100,
+      };
+      // Per-material breakdown
+      materials.forEach(m => {
+        const qty = monthConsumption.filter(c => c.materialId === m.id).reduce((s, c) => s + c.quantity, 0);
+        row[`${m.name} (${getUnitLabel(m.unit)})`] = Math.round(qty * 100) / 100;
+      });
+      return row;
+    });
+    const wsMonthly = XLSX.utils.json_to_sheet(monthlyTotals);
+    XLSX.utils.book_append_sheet(wb, wsMonthly, 'Monthly Totals');
+
+    // Sheet 4: All Consumption Detail
+    const allDetail = consumption
+      .filter(c => new Date(c.date).getFullYear() === currentYear)
+      .map(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        const personName = c.employee
+          ? `${c.employee.firstName} ${c.employee.lastName}`
+          : c.pieceWorker
+            ? `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)`
+            : 'N/A';
+        return {
+          'Month': monthNames[new Date(c.date).getMonth()],
+          'Date': formatDate(c.date),
+          'Material': material?.name || 'Unknown',
+          'Unit': material ? getUnitLabel(material.unit) : '',
+          'Quantity': c.quantity,
+          'Who Consumed': personName,
+          'Notes': c.notes || '',
+        };
+      });
+    const wsDetail = XLSX.utils.json_to_sheet(allDetail);
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'All Details');
+
+    const fileName = `consumption_statistics_${currentYear}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success(`Consumption statistics for ${currentYear} exported!`);
+  };
+
   const exportToExcel = () => {
     const filteredData = consumption.filter(c => {
       const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
@@ -324,6 +434,156 @@ export function Materials() {
     const fileName = `consumption_history_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
     toast.success('Excel file exported successfully!');
+  };
+
+  // Export consumption grouped by person — each person gets a sheet with their details + material summary
+  const exportByPerson = () => {
+    const filteredData = consumption.filter(c => {
+      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
+      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+      return matchesMaterial && matchesEmployee && matchesDate;
+    });
+
+    // Group by person
+    const grouped: Record<string, { name: string; records: typeof filteredData }> = {};
+    filteredData.forEach(c => {
+      let key = 'Unknown';
+      let name = 'Unknown';
+      if (c.employee) {
+        key = `emp-${c.employee.id}`;
+        name = `${c.employee.firstName} ${c.employee.lastName}`;
+      } else if (c.pieceWorker) {
+        key = `pw-${c.pieceWorker.id}`;
+        name = `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)`;
+      }
+      if (!grouped[key]) grouped[key] = { name, records: [] };
+      grouped[key].records.push(c);
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    // Summary sheet first — each person with total qty per material
+    const summaryRows = Object.values(grouped).map(g => {
+      const row: any = { 'Person': g.name, 'Total Records': g.records.length };
+      materials.forEach(m => {
+        const qty = g.records.filter(r => r.materialId === m.id).reduce((s, r) => s + r.quantity, 0);
+        if (qty > 0) row[`${m.name} (${getUnitLabel(m.unit)})`] = Math.round(qty * 100) / 100;
+      });
+      return row;
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    // One sheet per person
+    Object.values(grouped).forEach(g => {
+      const sheetName = g.name.substring(0, 31); // Excel sheet name max 31 chars
+      const rows = g.records.map(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        return {
+          'Date': formatDate(c.date),
+          'Material': material?.name || 'Unknown',
+          'Unit': material ? getUnitLabel(material.unit) : '',
+          'Quantity': c.quantity,
+          'Notes': c.notes || '',
+        };
+      });
+
+      // Add material totals at the bottom
+      const materialTotals: Record<string, number> = {};
+      g.records.forEach(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        const key = material?.name || 'Unknown';
+        materialTotals[key] = (materialTotals[key] || 0) + c.quantity;
+      });
+      rows.push({ 'Date': '', 'Material': '', 'Unit': '', 'Quantity': 0 as any, 'Notes': '' });
+      rows.push({ 'Date': '--- TOTALS ---' as any, 'Material': 'Material', 'Unit': '', 'Quantity': 'Total Qty' as any, 'Notes': '' });
+      Object.entries(materialTotals).forEach(([mat, qty]) => {
+        rows.push({ 'Date': '' as any, 'Material': mat, 'Unit': '', 'Quantity': Math.round(qty * 100) / 100 as any, 'Notes': '' });
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    const fileName = `consumption_by_person_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Exported consumption by person!');
+  };
+
+  // Export material summary — sum of each material across all filtered consumption
+  const exportMaterialSummary = () => {
+    const filteredData = consumption.filter(c => {
+      const matchesMaterial = !consumptionFilterMaterial || c.materialId === consumptionFilterMaterial;
+      const matchesEmployee = !consumptionFilterEmployee || c.employeeId === consumptionFilterEmployee || c.pieceWorkerId === consumptionFilterEmployee;
+      const matchesDate = (!consumptionStartDate || new Date(c.date) >= new Date(consumptionStartDate)) &&
+                         (!consumptionEndDate || new Date(c.date) <= new Date(consumptionEndDate));
+      return matchesMaterial && matchesEmployee && matchesDate;
+    });
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Material totals
+    const materialRows = materials.map(m => {
+      const records = filteredData.filter(c => c.materialId === m.id);
+      const totalQty = records.reduce((s, c) => s + c.quantity, 0);
+      if (totalQty === 0) return null;
+      // Count unique people
+      const uniquePeople = new Set(records.map(c => 
+        c.employee ? `emp-${c.employee.id}` : c.pieceWorker ? `pw-${c.pieceWorker.id}` : 'unknown'
+      ));
+      return {
+        'Material': m.name,
+        'Unit': getUnitLabel(m.unit),
+        'Total Quantity': Math.round(totalQty * 100) / 100,
+        'Number of Records': records.length,
+        'Number of People': uniquePeople.size,
+        'Current Stock': m.currentStock,
+      };
+    }).filter(Boolean);
+
+    const wsMaterials = XLSX.utils.json_to_sheet(materialRows as any[]);
+    XLSX.utils.book_append_sheet(wb, wsMaterials, 'Material Summary');
+
+    // Sheet 2: Material × Person breakdown
+    const people: { id: string; name: string }[] = [];
+    filteredData.forEach(c => {
+      if (c.employee) {
+        const key = `emp-${c.employee.id}`;
+        if (!people.find(p => p.id === key)) people.push({ id: key, name: `${c.employee.firstName} ${c.employee.lastName}` });
+      } else if (c.pieceWorker) {
+        const key = `pw-${c.pieceWorker.id}`;
+        if (!people.find(p => p.id === key)) people.push({ id: key, name: `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)` });
+      }
+    });
+
+    const breakdownRows = materials.flatMap(m => {
+      return people.map(p => {
+        const qty = filteredData.filter(c => {
+          if (c.materialId !== m.id) return false;
+          if (p.id.startsWith('emp-')) return c.employee?.id === parseInt(p.id.replace('emp-', ''));
+          if (p.id.startsWith('pw-')) return c.pieceWorker?.id === parseInt(p.id.replace('pw-', ''));
+          return false;
+        }).reduce((s, c) => s + c.quantity, 0);
+        if (qty === 0) return null;
+        return {
+          'Material': m.name,
+          'Unit': getUnitLabel(m.unit),
+          'Person': p.name,
+          'Total Quantity': Math.round(qty * 100) / 100,
+        };
+      }).filter(Boolean);
+    });
+
+    if (breakdownRows.length > 0) {
+      const wsBreakdown = XLSX.utils.json_to_sheet(breakdownRows as any[]);
+      XLSX.utils.book_append_sheet(wb, wsBreakdown, 'Material × Person');
+    }
+
+    const fileName = `material_summary_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success('Material summary exported!');
   };
 
   const handleDeleteConsumption = async (id: number) => {
@@ -438,6 +698,138 @@ export function Materials() {
     return sum + (consumedQty * avgPrice);
   }, 0);
 
+  // Export all statistics by month (Jan-Dec) to Excel
+  const exportMonthlyStats = () => {
+    const wb = XLSX.utils.book_new();
+    const currentYear = new Date().getFullYear();
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Sheet 1: Stock Overview (current snapshot)
+    const stockData = materials.map(m => {
+      const status = getStockStatus(m);
+      const avgPrice = purchases
+        .filter(p => p.materialId === m.id)
+        .reduce((total, p, _, arr) => arr.length > 0 ? total + p.unitPrice / arr.length : 0, 0);
+      return {
+        'Material': m.name,
+        'Unit': getUnitLabel(m.unit),
+        'Current Stock': m.currentStock,
+        'Min Stock Alert': m.minStockAlert,
+        'Status': status.toUpperCase(),
+        'Avg Unit Price': Math.round(avgPrice * 100) / 100,
+        'Stock Value': Math.round(m.currentStock * avgPrice * 100) / 100,
+      };
+    });
+    const wsStock = XLSX.utils.json_to_sheet(stockData);
+    XLSX.utils.book_append_sheet(wb, wsStock, 'Stock Overview');
+
+    // Sheet 2: Monthly Purchases Summary (Jan-Dec)
+    const purchasesByMonth = monthNames.map((month, idx) => {
+      const monthPurchases = purchases.filter(p => {
+        const d = new Date(p.date);
+        return d.getFullYear() === currentYear && d.getMonth() === idx;
+      });
+      const row: any = { 'Month': month, 'Total Purchases': monthPurchases.length };
+      // Per-material columns
+      materials.forEach(m => {
+        const qty = monthPurchases.filter(p => p.materialId === m.id).reduce((s, p) => s + p.quantity, 0);
+        const spent = monthPurchases.filter(p => p.materialId === m.id).reduce((s, p) => s + p.totalPrice, 0);
+        row[`${m.name} (Qty)`] = Math.round(qty * 100) / 100;
+        row[`${m.name} (Spent)`] = Math.round(spent * 100) / 100;
+      });
+      row['Total Spent'] = Math.round(monthPurchases.reduce((s, p) => s + p.totalPrice, 0) * 100) / 100;
+      return row;
+    });
+    const wsPurchases = XLSX.utils.json_to_sheet(purchasesByMonth);
+    XLSX.utils.book_append_sheet(wb, wsPurchases, 'Purchases by Month');
+
+    // Sheet 3: Monthly Consumption Summary (Jan-Dec)
+    const consumptionByMonth = monthNames.map((month, idx) => {
+      const monthConsumption = consumption.filter(c => {
+        const d = new Date(c.date);
+        return d.getFullYear() === currentYear && d.getMonth() === idx;
+      });
+      const row: any = { 'Month': month, 'Total Records': monthConsumption.length };
+      materials.forEach(m => {
+        const qty = monthConsumption.filter(c => c.materialId === m.id).reduce((s, c) => s + c.quantity, 0);
+        row[`${m.name} (Qty)`] = Math.round(qty * 100) / 100;
+      });
+      return row;
+    });
+    const wsConsumption = XLSX.utils.json_to_sheet(consumptionByMonth);
+    XLSX.utils.book_append_sheet(wb, wsConsumption, 'Consumption by Month');
+
+    // Sheet 4: Monthly Summary (Jan-Dec)
+    const monthlySummary = monthNames.map((month, idx) => {
+      const mPurchases = purchases.filter(p => {
+        const d = new Date(p.date);
+        return d.getFullYear() === currentYear && d.getMonth() === idx;
+      });
+      const mConsumption = consumption.filter(c => {
+        const d = new Date(c.date);
+        return d.getFullYear() === currentYear && d.getMonth() === idx;
+      });
+      const totalPurchaseSpend = mPurchases.reduce((s, p) => s + p.totalPrice, 0);
+      const totalConsumedQty = mConsumption.reduce((s, c) => s + c.quantity, 0);
+      return {
+        'Month': month,
+        'Purchases Count': mPurchases.length,
+        'Total Purchase Spend': Math.round(totalPurchaseSpend * 100) / 100,
+        'Consumption Records': mConsumption.length,
+        'Total Consumed Qty': Math.round(totalConsumedQty * 100) / 100,
+      };
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(monthlySummary);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Monthly Summary');
+
+    // Sheet 5: All Purchases Detail
+    const purchaseExport = purchases
+      .filter(p => new Date(p.date).getFullYear() === currentYear)
+      .map(p => {
+        const material = materials.find(m => m.id === p.materialId);
+        return {
+          'Month': monthNames[new Date(p.date).getMonth()],
+          'Date': formatDate(p.date),
+          'Material': material?.name || 'Unknown',
+          'Unit': material ? getUnitLabel(material.unit) : '',
+          'Supplier': p.supplier || '',
+          'Quantity': p.quantity,
+          'Unit Price': p.unitPrice,
+          'Total Price': p.totalPrice,
+        };
+      });
+    const wsAllPurchases = XLSX.utils.json_to_sheet(purchaseExport);
+    XLSX.utils.book_append_sheet(wb, wsAllPurchases, 'All Purchases');
+
+    // Sheet 6: All Consumption Detail
+    const consumptionExport = consumption
+      .filter(c => new Date(c.date).getFullYear() === currentYear)
+      .map(c => {
+        const material = materials.find(m => m.id === c.materialId);
+        const personName = c.employee 
+          ? `${c.employee.firstName} ${c.employee.lastName}` 
+          : c.pieceWorker 
+            ? `${c.pieceWorker.firstName} ${c.pieceWorker.lastName} (Worker)`
+            : 'N/A';
+        return {
+          'Month': monthNames[new Date(c.date).getMonth()],
+          'Date': formatDate(c.date),
+          'Material': material?.name || 'Unknown',
+          'Unit': material ? getUnitLabel(material.unit) : '',
+          'Quantity': c.quantity,
+          'Who Consumed': personName,
+          'Notes': c.notes || '',
+        };
+      });
+    const wsAllConsumption = XLSX.utils.json_to_sheet(consumptionExport);
+    XLSX.utils.book_append_sheet(wb, wsAllConsumption, 'All Consumption');
+
+    const fileName = `materials_statistics_${currentYear}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    toast.success(`Statistics for ${currentYear} exported successfully!`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -448,6 +840,10 @@ export function Materials() {
           </p>
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 w-full lg:w-auto">
+          <Button onClick={exportMonthlyStats} variant="outline" className="text-xs sm:text-sm text-green-600 border-green-600 hover:bg-green-50">
+            <Download className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Export </span>Stats
+          </Button>
           <Button onClick={() => setShowConsumptionHistory(true)} variant="outline" className="text-xs sm:text-sm">
             <TrendingDown className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">View </span>History
@@ -681,7 +1077,7 @@ export function Materials() {
       </Dialog>
 
       <Dialog open={showPurchaseForm} onOpenChange={setShowPurchaseForm}>
-        <DialogContent className={editingPurchase ? '' : 'max-w-3xl w-[90vw]'}>
+        <DialogContent className={editingPurchase ? '' : 'max-w-3xl w-full sm:w-[90vw]'}>
           <DialogHeader onClose={() => {
             setShowPurchaseForm(false);
             resetPurchaseForm();
@@ -1350,7 +1746,7 @@ export function Materials() {
       </div>
 
       <Dialog open={showConsumptionHistory} onOpenChange={setShowConsumptionHistory}>
-        <DialogContent className="max-w-7xl w-[95vw] h-[90vh] flex flex-col">
+        <DialogContent className="max-w-7xl w-full sm:w-[95vw] h-[80vh] sm:h-[90vh] flex flex-col">
           <DialogHeader onClose={() => setShowConsumptionHistory(false)}>
             <DialogTitle>Consumption History</DialogTitle>
           </DialogHeader>
@@ -1438,7 +1834,31 @@ export function Materials() {
                     className="text-green-600 border-green-600 hover:bg-green-50"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export to Excel
+                    Export Filtered
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={exportConsumedByMonth}
+                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Monthly Stats
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={exportByPerson}
+                    className="text-purple-600 border-purple-600 hover:bg-purple-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export by Person
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={exportMaterialSummary}
+                    className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Material Summary
                   </Button>
                   <div className="ml-auto text-sm text-gray-600 flex items-center">
                     Showing {consumption.filter(c => {
