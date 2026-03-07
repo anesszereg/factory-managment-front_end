@@ -39,6 +39,8 @@ export default function Suppliers() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showSupplierSummary, setShowSupplierSummary] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [showQuickPayment, setShowQuickPayment] = useState(false);
+  const [quickPaymentSupplierId, setQuickPaymentSupplierId] = useState<number | ''>('');
   
   // Editing
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -263,6 +265,55 @@ export default function Suppliers() {
         const updatedOrder = await supplierOrdersApi.getById(selectedOrderForHistory.id);
         setSelectedOrderForHistory(updatedOrder.data);
       }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to record payment', { id: loadingToast });
+    }
+  };
+
+  const handleQuickPaymentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!quickPaymentSupplierId) return;
+    
+    const formData = new FormData(e.currentTarget);
+    let totalPayment = parseFloat(formData.get('amount') as string);
+    const date = formData.get('date') as string;
+    const paymentMethod = formData.get('paymentMethod') as string || undefined;
+    const notes = formData.get('notes') as string || undefined;
+    const createExpense = formData.get('createExpense') === 'on';
+    
+    // Get unpaid orders for this supplier, sorted oldest first
+    const unpaidOrders = orders
+      .filter(o => o.supplierId === quickPaymentSupplierId && o.status !== SupplierOrderStatus.COMPLETED && o.status !== SupplierOrderStatus.CANCELLED)
+      .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+    
+    if (unpaidOrders.length === 0 || totalPayment <= 0) return;
+    
+    const loadingToast = toast.loading('Recording payment...');
+    
+    try {
+      // Distribute payment across orders (oldest first)
+      let isFirstPayment = true;
+      for (const order of unpaidOrders) {
+        if (totalPayment <= 0) break;
+        const remaining = order.totalAmount - order.paidAmount;
+        const payForThisOrder = Math.min(totalPayment, remaining);
+        
+        await supplierOrdersApi.addPayment(order.id, {
+          date,
+          amount: Math.round(payForThisOrder * 100) / 100,
+          paymentMethod,
+          notes: notes ? `${notes} (Quick payment)` : 'Quick payment',
+          createExpense: isFirstPayment && createExpense,
+        });
+        
+        totalPayment -= payForThisOrder;
+        isFirstPayment = false;
+      }
+      
+      toast.success('Payment recorded and distributed across orders', { id: loadingToast });
+      setShowQuickPayment(false);
+      setQuickPaymentSupplierId('');
+      fetchOrders();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to record payment', { id: loadingToast });
     }
@@ -571,6 +622,13 @@ export default function Suppliers() {
           }}>
             <Plus className="h-4 w-4 mr-2" />
             New Order
+          </Button>
+          <Button
+            onClick={() => setShowQuickPayment(true)}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Add Payment
           </Button>
         </div>
       </div>
@@ -1283,6 +1341,124 @@ export default function Suppliers() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Payment Dialog */}
+      <Dialog open={showQuickPayment} onOpenChange={setShowQuickPayment}>
+        <DialogContent>
+          <DialogHeader onClose={() => {
+            setShowQuickPayment(false);
+            setQuickPaymentSupplierId('');
+          }}>
+            <DialogTitle>Quick Payment</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleQuickPaymentSubmit} className="space-y-4">
+            <Select
+              label="Select Supplier"
+              value={quickPaymentSupplierId}
+              onChange={(e) => setQuickPaymentSupplierId(e.target.value ? parseInt(e.target.value) : '')}
+              required
+            >
+              <option value="">Choose a supplier...</option>
+              {suppliers
+                .filter(s => {
+                  const sOrders = orders.filter(o => o.supplierId === s.id && o.status !== SupplierOrderStatus.COMPLETED && o.status !== SupplierOrderStatus.CANCELLED);
+                  return sOrders.length > 0;
+                })
+                .map(s => {
+                  const sTotal = orders.filter(o => o.supplierId === s.id).reduce((sum, o) => sum + o.totalAmount, 0);
+                  const sPaid = orders.filter(o => o.supplierId === s.id).reduce((sum, o) => sum + o.paidAmount, 0);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — Balance: {formatCurrency(sTotal - sPaid)}
+                    </option>
+                  );
+                })}
+            </Select>
+
+            {quickPaymentSupplierId && (() => {
+              const supplierOrders = orders.filter(o => o.supplierId === quickPaymentSupplierId);
+              const sTotal = supplierOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+              const sPaid = supplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
+              const sRemaining = sTotal - sPaid;
+              const unpaidOrders = supplierOrders
+                .filter(o => o.status !== SupplierOrderStatus.COMPLETED && o.status !== SupplierOrderStatus.CANCELLED)
+                .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+
+              return (
+                <>
+                  <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-xs text-gray-500">Total</p>
+                        <p className="font-bold">{formatCurrency(sTotal)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-green-600">Paid</p>
+                        <p className="font-bold text-green-600">{formatCurrency(sPaid)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-red-600">Balance</p>
+                        <p className="font-bold text-red-600">{formatCurrency(sRemaining)}</p>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t mt-2">
+                      <p className="text-xs text-gray-500 mb-1">Unpaid orders ({unpaidOrders.length}):</p>
+                      {unpaidOrders.map(o => (
+                        <div key={o.id} className="flex justify-between text-xs py-0.5">
+                          <span>{format(new Date(o.orderDate), 'dd/MM/yyyy')} — {o.items?.map(i => i.description).join(', ') || '-'}</span>
+                          <span className="text-red-600 font-medium ml-2 whitespace-nowrap">{formatCurrency(o.totalAmount - o.paidAmount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Input
+                    label="Payment Date"
+                    type="date"
+                    name="date"
+                    required
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                  />
+                  <Input
+                    label="Amount"
+                    type="number"
+                    name="amount"
+                    required
+                    min="0.01"
+                    max={sRemaining}
+                    step="0.01"
+                    defaultValue={sRemaining}
+                    placeholder="Payment amount"
+                  />
+                  <Select label="Payment Method" name="paymentMethod">
+                    <option value="">Select method</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Check">Check</option>
+                    <option value="Card">Card</option>
+                  </Select>
+                  <Textarea label="Notes" name="notes" placeholder="Payment notes" rows={2} />
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" name="createExpense" id="quickCreateExpense" defaultChecked className="rounded border-gray-300" />
+                    <label htmlFor="quickCreateExpense" className="text-sm text-gray-700">Also record as expense</label>
+                  </div>
+                </>
+              );
+            })()}
+
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowQuickPayment(false);
+                setQuickPaymentSupplierId('');
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!quickPaymentSupplierId} className="bg-green-600 hover:bg-green-700">
+                Record Payment
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 

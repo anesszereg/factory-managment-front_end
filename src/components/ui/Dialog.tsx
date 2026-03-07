@@ -16,7 +16,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      <div className="flex min-h-full items-start sm:items-center justify-center p-2 sm:p-4">
+      <div className="flex min-h-full items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8">
         {children}
       </div>
     </div>
