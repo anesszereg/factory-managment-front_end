@@ -1133,8 +1133,8 @@ export default function PieceWorkers() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center">
@@ -1171,14 +1171,14 @@ export default function PieceWorkers() {
                 </Select>
               </div>
             </div>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {searchedWorkers.map((worker) => {
                 const workerReceipts = receipts.filter(r => r.pieceWorkerId === worker.id);
                 const balance = workerReceipts.reduce((sum, r) => sum + (r.totalAmount - r.paidAmount), 0);
                 return (
                   <div
                     key={worker.id}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                       selectedWorker?.id === worker.id
                         ? 'border-blue-500 bg-blue-50/50 shadow-sm'
                         : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
@@ -1267,7 +1267,7 @@ export default function PieceWorkers() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="flex items-center">
