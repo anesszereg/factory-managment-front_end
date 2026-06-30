@@ -265,6 +265,7 @@ export function Materials() {
     const loadingToast = toast.loading('Scanning receipt...');
 
     try {
+      const dataUrl = await readFileAsDataURL(file);
       const worker = await createWorker('eng', 1, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
@@ -274,7 +275,7 @@ export function Materials() {
       });
       const {
         data: { text },
-      } = await worker.recognize(file);
+      } = await worker.recognize(dataUrl);
       await worker.terminate();
 
       const parsedItems = parseReceiptText(text);
@@ -294,6 +295,15 @@ export function Materials() {
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const parseReceiptText = (text: string) => {
