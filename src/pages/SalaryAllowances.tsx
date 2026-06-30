@@ -104,9 +104,11 @@ const SalaryAllowances: React.FC = () => {
   const getTotalEarningsForCurrentMonth = (monthlySalary: number, hireDate: string) => {
     const dailyRate = getDailyRate(monthlySalary);
     const today = new Date();
-    const monthStart = startOfMonth(today);
     const hire = new Date(hireDate);
-    const startDate = hire > monthStart ? hire : monthStart;
+    let startDate = new Date(today.getFullYear(), today.getMonth(), hire.getDate());
+    if (startDate > today) {
+      startDate = new Date(today.getFullYear(), today.getMonth() - 1, hire.getDate());
+    }
     const daysWorked = differenceInDays(today, startDate) + 1;
     return dailyRate * Math.max(0, daysWorked);
   };
