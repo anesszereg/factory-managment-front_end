@@ -5,20 +5,25 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
-import { furnitureModelsApi } from '@/services/api';
-import type { FurnitureModel } from '@/types';
-import { FurnitureSize } from '@/types';
-import { Plus, Package, Ruler } from 'lucide-react';
-import { formatDate, getSizeLabel } from '@/lib/utils';
+import { furnitureModelsApi, rawMaterialsApi } from '@/services/api';
+import type { FurnitureModel, RawMaterial, ModelMaterialRequirement } from '@/types';
+import { FurnitureSize, ProductionStep } from '@/types';
+import { Plus, Package, Ruler, Trash2 } from 'lucide-react';
+import { formatDate, getSizeLabel, getStepLabel, getUnitLabel } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { printDocument } from '@/lib/print';
 
 export function Models() {
   const [models, setModels] = useState<FurnitureModel[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [materialRequirements, setMaterialRequirements] = useState<ModelMaterialRequirement[]>([]);
 
   useEffect(() => {
     loadModels();
+    loadRawMaterials();
   }, []);
 
   const loadModels = async () => {
@@ -33,6 +38,27 @@ export function Models() {
     }
   };
 
+  const loadRawMaterials = async () => {
+    try {
+      const response = await rawMaterialsApi.getAll();
+      setRawMaterials(response.data);
+    } catch (error) {
+      console.error('Failed to load raw materials:', error);
+    }
+  };
+
+  const addMaterialRequirement = (step: ProductionStep) => {
+    setMaterialRequirements(prev => [...prev, { id: 0, modelId: 0, step, materialId: 0, quantity: 0, createdAt: '', updatedAt: '' }]);
+  };
+
+  const updateMaterialRequirement = (index: number, field: keyof ModelMaterialRequirement, value: string | number) => {
+    setMaterialRequirements(prev => prev.map((req, i) => i === index ? { ...req, [field]: value } : req));
+  };
+
+  const removeMaterialRequirement = (index: number) => {
+    setMaterialRequirements(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreateModel = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -40,18 +66,37 @@ export function Models() {
     const loadingToast = toast.loading('Creating furniture model...');
     
     try {
+      const validRequirements = materialRequirements
+        .filter(req => req.materialId > 0 && req.quantity > 0)
+        .map(req => ({ step: req.step, materialId: req.materialId, quantity: req.quantity }));
+
       await furnitureModelsApi.create({
         name: formData.get('name') as string,
         description: formData.get('description') as string || undefined,
         size: formData.get('size') as FurnitureSize,
+        materialRequirements: validRequirements,
       });
       toast.success('Furniture model created successfully!', { id: loadingToast });
       setShowForm(false);
+      setMaterialRequirements([]);
       loadModels();
     } catch (error) {
       console.error('Failed to create model:', error);
       toast.error('Failed to create model. Please try again.', { id: loadingToast });
     }
+  };
+
+  const printModel = (model: FurnitureModel) => {
+    printDocument({
+      title: 'Furniture Model',
+      subtitle: `#${model.id}`,
+      fields: [
+        { label: 'Name', value: model.name },
+        { label: 'Size', value: getSizeLabel(model.size) },
+        { label: 'Description', value: model.description || '-' },
+        { label: 'Created', value: formatDate(model.createdAt) },
+      ],
+    });
   };
 
   if (loading) {
@@ -108,6 +153,80 @@ export function Models() {
                 placeholder="Describe the furniture model..."
                 helperText="Optional: Add details about materials, dimensions, or features"
               />
+
+              <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Required Raw Materials</h3>
+                  <span className="text-xs text-gray-500">Add materials for each production step</span>
+                </div>
+
+                {Object.values(ProductionStep).map((step) => {
+                  const stepRequirements = materialRequirements.filter(r => r.step === step);
+                  return (
+                    <div key={step} className="border rounded-md p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm text-gray-800">{getStepLabel(step)}</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addMaterialRequirement(step)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add material
+                        </Button>
+                      </div>
+                      {stepRequirements.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">No materials required for this step</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {stepRequirements.map((req) => {
+                            const globalIndex = materialRequirements.findIndex(r => r === req);
+                            return (
+                              <div key={globalIndex} className="flex items-end gap-2">
+                                <div className="flex-1">
+                                  <label className="block text-xs text-gray-600 mb-1">Material</label>
+                                  <select
+                                    value={req.materialId}
+                                    onChange={(e) => updateMaterialRequirement(globalIndex, 'materialId', parseInt(e.target.value) || 0)}
+                                    className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+                                    required
+                                  >
+                                    <option value="">Select material...</option>
+                                    {rawMaterials.map(m => (
+                                      <option key={m.id} value={m.id}>{m.name} ({getUnitLabel(m.unit)})</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="w-28">
+                                  <label className="block text-xs text-gray-600 mb-1">Quantity</label>
+                                  <Input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={req.quantity || ''}
+                                    onChange={(e) => updateMaterialRequirement(globalIndex, 'quantity', parseFloat(e.target.value) || 0)}
+                                    required
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeMaterialRequirement(globalIndex)}
+                                  className="p-2 rounded-md text-red-600 hover:bg-red-50"
+                                  title="Remove"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="flex justify-end space-x-3">
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Cancel
@@ -148,6 +267,32 @@ export function Models() {
               ) : (
                 <p className="text-sm text-gray-400 italic">No description</p>
               )}
+              {model.materialRequirements && model.materialRequirements.length > 0 && (
+                <div className="mt-4 border-t pt-3">
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Required Materials</p>
+                  <div className="space-y-2">
+                    {Object.values(ProductionStep).map(step => {
+                      const stepReqs = model.materialRequirements!.filter(r => r.step === step);
+                      if (stepReqs.length === 0) return null;
+                      return (
+                        <div key={step}>
+                          <p className="text-xs font-medium text-primary">{getStepLabel(step)}</p>
+                          <ul className="text-xs text-gray-600 space-y-0.5">
+                            {stepReqs.map(req => (
+                              <li key={req.id}>
+                                {req.material?.name || 'Unknown'} — {req.quantity} {getUnitLabel(req.material?.unit || '')}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end mt-4">
+                <PrintButton onClick={() => printModel(model)} label="Print model" />
+              </div>
             </CardContent>
           </Card>
         ))}

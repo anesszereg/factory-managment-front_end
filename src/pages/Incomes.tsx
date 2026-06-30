@@ -11,6 +11,8 @@ import { IncomeSource } from '@/types';
 import { Plus, TrendingUp, DollarSign, Calendar, Edit2, Trash2, ArrowUpRight, Banknote, Layers } from 'lucide-react';
 import { formatDate, formatCurrency, getIncomeSourceLabel } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { printDocument } from '@/lib/print';
 
 export function Incomes() {
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -95,6 +97,20 @@ export function Incomes() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingIncome(null);
+  };
+
+  const printIncome = (income: Income) => {
+    printDocument({
+      title: 'Income Receipt',
+      subtitle: `#${income.id}`,
+      fields: [
+        { label: 'Date', value: formatDate(income.date) },
+        { label: 'Source', value: getIncomeSourceLabel(income.source) },
+        { label: 'Amount', value: formatCurrency(income.amount) },
+        { label: 'Payment Method', value: income.paymentMethod || '-' },
+        { label: 'Description', value: income.description || '-' },
+      ],
+    });
   };
 
   const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0);
@@ -444,6 +460,7 @@ export function Incomes() {
                         <p className="text-sm text-gray-600 mb-2">{income.description}</p>
                       )}
                       <div className="flex gap-2 pt-2 border-t border-gray-200/50">
+                        <PrintButton onClick={() => printIncome(income)} />
                         <button
                           onClick={() => handleEdit(income)}
                           className="p-1.5 rounded-lg hover:bg-white/60 text-blue-600 transition-colors"
@@ -502,6 +519,7 @@ export function Incomes() {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                             <div className="flex justify-center gap-1">
+                              <PrintButton onClick={() => printIncome(income)} label="Print income" />
                               <button
                                 onClick={() => handleEdit(income)}
                                 className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"

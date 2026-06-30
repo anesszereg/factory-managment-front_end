@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi } from '@/services/api';
-import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker } from '@/types';
+import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi } from '@/services/api';
+import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker, Supplier } from '@/types';
 import { MaterialUnit } from '@/types';
-import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer } from 'lucide-react';
 import { formatDate, getUnitLabel, formatCurrency } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
 
@@ -38,14 +38,15 @@ export function Materials() {
   const [consumptionEndDate, setConsumptionEndDate] = useState('');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [pieceWorkers, setPieceWorkers] = useState<PieceWorker[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   
   // Multi-purchase state
   const [purchaseItems, setPurchaseItems] = useState<{
     materialId: number;
-    supplier: string;
+    supplierId: number;
     quantity: number;
     unitPrice: number;
-  }[]>([{ materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+  }[]>([{ materialId: 0, supplierId: 0, quantity: 0, unitPrice: 0 }]);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
@@ -54,18 +55,20 @@ export function Materials() {
 
   const loadData = async () => {
     try {
-      const [materialsRes, purchasesRes, consumptionRes, employeesRes, pieceWorkersRes] = await Promise.all([
+      const [materialsRes, purchasesRes, consumptionRes, employeesRes, pieceWorkersRes, suppliersRes] = await Promise.all([
         rawMaterialsApi.getAll(),
         materialPurchasesApi.getAll(),
         materialConsumptionApi.getAll(),
         employeesApi.getAll(),
         pieceWorkersApi.getAll(),
+        suppliersApi.getAll(),
       ]);
       setMaterials(materialsRes.data);
       setPurchases(purchasesRes.data);
       setConsumption(consumptionRes.data);
       setEmployees(employeesRes.data);
       setPieceWorkers(pieceWorkersRes.data);
+      setSuppliers(suppliersRes.data);
       if (materialsRes.data.length > 0 && !selectedMaterial) {
         setSelectedMaterial(materialsRes.data[0]);
       }
@@ -133,16 +136,18 @@ export function Materials() {
     const formData = new FormData(e.currentTarget);
     const quantity = parseFloat(formData.get('quantity') as string);
     const unitPrice = parseFloat(formData.get('unitPrice') as string);
+    const supplierId = parseInt(formData.get('supplierId') as string) || undefined;
+    const supplier = supplierId ? suppliers.find(s => s.id === supplierId) : undefined;
     
     const loadingToast = toast.loading(editingPurchase ? 'Updating purchase...' : 'Recording purchase...');
     
     try {
       if (editingPurchase) {
         await materialPurchasesApi.update(editingPurchase.id, {
-          supplier: formData.get('supplier') as string,
+          supplierId,
+          supplierName: supplier?.name,
           quantity,
           unitPrice,
-          totalPrice: quantity * unitPrice,
         });
         toast.success('Purchase updated successfully!', { id: loadingToast });
         setEditingPurchase(null);
@@ -150,10 +155,10 @@ export function Materials() {
         await materialPurchasesApi.create({
           materialId: parseInt(formData.get('materialId') as string),
           date: formData.get('date') as string,
-          supplier: formData.get('supplier') as string,
+          supplierId,
+          supplierName: supplier?.name,
           quantity,
           unitPrice,
-          totalPrice: quantity * unitPrice,
         });
         toast.success('Purchase recorded successfully!', { id: loadingToast });
       }
@@ -167,13 +172,13 @@ export function Materials() {
 
   // Handle multiple purchases at once
   const handleCreateMultiplePurchases = async () => {
-    // Filter valid items (must have material, quantity, and price)
+    // Filter valid items (must have material, supplier, quantity, and price)
     const validItems = purchaseItems.filter(
-      item => item.materialId > 0 && item.quantity > 0 && item.unitPrice > 0
+      item => item.materialId > 0 && item.supplierId > 0 && item.quantity > 0 && item.unitPrice > 0
     );
     
     if (validItems.length === 0) {
-      toast.error('Please add at least one valid purchase item');
+      toast.error('Please add at least one valid purchase item with a supplier selected');
       return;
     }
     
@@ -182,16 +187,17 @@ export function Materials() {
     try {
       // Create all purchases in parallel
       await Promise.all(
-        validItems.map(item =>
-          materialPurchasesApi.create({
+        validItems.map(item => {
+          const supplier = suppliers.find(s => s.id === item.supplierId);
+          return materialPurchasesApi.create({
             materialId: item.materialId,
             date: purchaseDate,
-            supplier: item.supplier,
+            supplierId: item.supplierId,
+            supplierName: supplier?.name,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            totalPrice: item.quantity * item.unitPrice,
-          })
-        )
+          });
+        })
       );
       
       toast.success(`${validItems.length} purchase(s) recorded successfully!`, { id: loadingToast });
@@ -205,13 +211,13 @@ export function Materials() {
   };
 
   const resetPurchaseForm = () => {
-    setPurchaseItems([{ materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+    setPurchaseItems([{ materialId: 0, supplierId: 0, quantity: 0, unitPrice: 0 }]);
     setPurchaseDate(new Date().toISOString().split('T')[0]);
     setEditingPurchase(null);
   };
 
   const addPurchaseItem = () => {
-    setPurchaseItems(prev => [...prev, { materialId: 0, supplier: '', quantity: 0, unitPrice: 0 }]);
+    setPurchaseItems(prev => [...prev, { materialId: 0, supplierId: 0, quantity: 0, unitPrice: 0 }]);
   };
 
   const removePurchaseItem = (index: number) => {
@@ -219,9 +225,25 @@ export function Materials() {
   };
 
   const updatePurchaseItem = (index: number, field: string, value: string | number) => {
-    setPurchaseItems(prev => prev.map((item, i) => 
-      i === index ? { ...item, [field]: value } : item
-    ));
+    setPurchaseItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      const updated = { ...item, [field]: value };
+      if (field === 'materialId') {
+        const materialId = value as number;
+        const lastPrice = getLastUnitPrice(materialId);
+        if (lastPrice > 0 && item.unitPrice === 0) {
+          updated.unitPrice = lastPrice;
+        }
+      }
+      return updated;
+    }));
+  };
+
+  const getLastUnitPrice = (materialId: number) => {
+    const materialPurchases = purchases
+      .filter(p => p.materialId === materialId && p.unitPrice > 0)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return materialPurchases.length > 0 ? materialPurchases[0].unitPrice : 0;
   };
 
   const getPurchaseTotal = () => {
@@ -627,6 +649,101 @@ export function Materials() {
     return '📦';
   };
 
+  const getSupplierName = (purchase: MaterialPurchase) => {
+    return purchase.supplier?.name || purchase.supplierName || 'Unknown Supplier';
+  };
+
+  const printPurchase = (purchase: MaterialPurchase) => {
+    const material = materials.find(m => m.id === purchase.materialId);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Purchase Receipt #${purchase.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+              .title { font-size: 24px; font-weight: bold; margin: 0; }
+              .subtitle { font-size: 14px; color: #666; }
+              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .label { font-weight: bold; color: #333; }
+              .value { color: #000; }
+              .total { font-size: 18px; font-weight: bold; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+              @media print { body { padding: 10px; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <p class="title">Purchase Receipt</p>
+              <p class="subtitle">#${purchase.id}</p>
+            </div>
+            <div class="row"><span class="label">Date:</span><span class="value">${formatDate(purchase.date)}</span></div>
+            <div class="row"><span class="label">Supplier:</span><span class="value">${getSupplierName(purchase)}</span></div>
+            <div class="row"><span class="label">Material:</span><span class="value">${material?.name || 'Unknown'} (${material ? getUnitLabel(material.unit) : ''})</span></div>
+            <div class="row"><span class="label">Quantity:</span><span class="value">${purchase.quantity}</span></div>
+            <div class="row"><span class="label">Unit Price:</span><span class="value">${formatCurrency(purchase.unitPrice)}</span></div>
+            <div class="total row"><span class="label">Total Price:</span><span class="value">${formatCurrency(purchase.totalPrice)}</span></div>
+            <div class="footer">
+              <p>Thank you for your business</p>
+              <p>Printed on ${new Date().toLocaleString()}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const printConsumption = (cons: MaterialConsumption) => {
+    const material = materials.find(m => m.id === cons.materialId);
+    const personName = cons.employee
+      ? `${cons.employee.firstName} ${cons.employee.lastName}`
+      : cons.pieceWorker
+        ? `${cons.pieceWorker.firstName} ${cons.pieceWorker.lastName} (Worker)`
+        : 'N/A';
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Consumption Receipt #${cons.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+              .title { font-size: 24px; font-weight: bold; margin: 0; }
+              .subtitle { font-size: 14px; color: #666; }
+              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .label { font-weight: bold; color: #333; }
+              .value { color: #000; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+              @media print { body { padding: 10px; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <p class="title">Material Consumption Receipt</p>
+              <p class="subtitle">#${cons.id}</p>
+            </div>
+            <div class="row"><span class="label">Date:</span><span class="value">${formatDate(cons.date)}</span></div>
+            <div class="row"><span class="label">Material:</span><span class="value">${material?.name || 'Unknown'} (${material ? getUnitLabel(material.unit) : ''})</span></div>
+            <div class="row"><span class="label">Quantity:</span><span class="value">${cons.quantity}</span></div>
+            <div class="row"><span class="label">Consumed By:</span><span class="value">${personName}</span></div>
+            <div class="row"><span class="label">Notes:</span><span class="value">${cons.notes || '-'}</span></div>
+            <div class="footer">
+              <p>Factory Management Platform</p>
+              <p>Printed on ${new Date().toLocaleString()}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   if (loading) {
     return <PageLoading />;
   }
@@ -793,7 +910,7 @@ export function Materials() {
           'Date': formatDate(p.date),
           'Material': material?.name || 'Unknown',
           'Unit': material ? getUnitLabel(material.unit) : '',
-          'Supplier': p.supplier || '',
+          'Supplier': p.supplier?.name || p.supplierName || '',
           'Quantity': p.quantity,
           'Unit Price': p.unitPrice,
           'Total Price': p.totalPrice,
@@ -1102,14 +1219,19 @@ export function Materials() {
                   </option>
                 ))}
               </Select>
-              <Input
+              <Select
                 label="Supplier"
-                type="text"
-                name="supplier"
+                name="supplierId"
                 required
-                placeholder="Supplier name"
-                defaultValue={editingPurchase.supplier}
-              />
+                defaultValue={editingPurchase.supplierId || ''}
+              >
+                <option value="">Select supplier</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </Select>
               <Input
                 label="Date"
                 type="date"
@@ -1189,13 +1311,18 @@ export function Materials() {
                           </Select>
                         </div>
                         <div className="col-span-3">
-                          <Input
-                            label={index === 0 ? "Supplier" : undefined}
-                            type="text"
-                            placeholder="Supplier"
-                            value={item.supplier}
-                            onChange={(e) => updatePurchaseItem(index, 'supplier', e.target.value)}
-                          />
+                          <Select
+                            label={index === 0 ? "Supplier *" : undefined}
+                            value={item.supplierId || ''}
+                            onChange={(e) => updatePurchaseItem(index, 'supplierId', parseInt(e.target.value) || 0)}
+                          >
+                            <option value={0}>Select supplier</option>
+                            {suppliers.map((supplier) => (
+                              <option key={supplier.id} value={supplier.id}>
+                                {supplier.name}
+                              </option>
+                            ))}
+                          </Select>
                         </div>
                         <div className="col-span-2">
                           <Input
@@ -1638,10 +1765,17 @@ export function Materials() {
                           <div key={purchase.id} className="p-3 bg-green-50 rounded-lg border border-green-200">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex-1">
-                                <p className="text-sm font-semibold text-green-900">{purchase.supplier}</p>
+                                <p className="text-sm font-semibold text-green-900">{purchase.supplier?.name || purchase.supplierName || 'Unknown Supplier'}</p>
                                 <p className="text-xs text-green-700">{formatDate(purchase.date)}</p>
                               </div>
                               <div className="flex space-x-2">
+                                <button
+                                  onClick={() => printPurchase(purchase)}
+                                  className="text-purple-600 hover:text-purple-900"
+                                  title="Print"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </button>
                                 <button
                                   onClick={() => {
                                     setEditingPurchase(purchase);
@@ -1698,6 +1832,13 @@ export function Materials() {
                                 <p className="text-xs text-red-700">{formatDate(cons.date)}</p>
                               </div>
                               <div className="flex space-x-2">
+                                <button
+                                  onClick={() => printConsumption(cons)}
+                                  className="text-purple-600 hover:text-purple-900"
+                                  title="Print"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </button>
                                 <button
                                   onClick={() => {
                                     setEditingConsumption(cons);
@@ -1946,6 +2087,13 @@ export function Materials() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => printConsumption(cons)}
+                                    className="text-purple-600 hover:text-purple-900"
+                                    title="Print"
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setEditingConsumption(cons);

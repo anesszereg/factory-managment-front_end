@@ -4,12 +4,15 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { Plus, Truck, Package, DollarSign, CreditCard, Edit2, Trash2, Eye, Download, Printer, X } from 'lucide-react';
 import { PageLoading } from '../components/ui/Loading';
+import { PrintButton } from '../components/ui/PrintButton';
+import { printDocument } from '../lib/print';
 import { suppliersApi, supplierOrdersApi, rawMaterialsApi } from '../services/api';
 import { 
   Supplier, 
   SupplierStatus, 
   SupplierOrder, 
   SupplierOrderStatus,
+  SupplierPayment,
   RawMaterial 
 } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -514,6 +517,81 @@ export default function Suppliers() {
     }
   };
 
+  const printSupplierPayment = (payment: SupplierPayment, order: SupplierOrder) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Payment Receipt #${payment.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+              .title { font-size: 24px; font-weight: bold; margin: 0; }
+              .subtitle { font-size: 14px; color: #666; }
+              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .label { font-weight: bold; color: #333; }
+              .value { color: #000; }
+              .total { font-size: 18px; font-weight: bold; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+              @media print { body { padding: 10px; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <p class="title">Payment Receipt</p>
+              <p class="subtitle">#${payment.id}</p>
+            </div>
+            <div class="row"><span class="label">Supplier:</span><span class="value">${order.supplier?.name || 'Unknown'}</span></div>
+            <div class="row"><span class="label">Order:</span><span class="value">#${order.id}</span></div>
+            <div class="row"><span class="label">Order Total:</span><span class="value">${formatCurrency(order.totalAmount)}</span></div>
+            <div class="row"><span class="label">Previously Paid:</span><span class="value">${formatCurrency(order.paidAmount - payment.amount)}</span></div>
+            <div class="row"><span class="label">Payment Date:</span><span class="value">${format(new Date(payment.date), 'dd/MM/yyyy')}</span></div>
+            <div class="row"><span class="label">Payment Method:</span><span class="value">${payment.paymentMethod || 'Cash'}</span></div>
+            ${payment.notes ? `<div class="row"><span class="label">Notes:</span><span class="value">${payment.notes}</span></div>` : ''}
+            <div class="total row"><span class="label">Amount Paid:</span><span class="value">${formatCurrency(payment.amount)}</span></div>
+            <div class="footer">
+              <p>Thank you for your payment</p>
+              <p>Printed on ${new Date().toLocaleString()}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const printSupplier = (supplier: Supplier) => {
+    printDocument({
+      title: 'Supplier Details',
+      subtitle: `#${supplier.id}`,
+      fields: [
+        { label: 'Name', value: supplier.name },
+        { label: 'Phone', value: supplier.phone || '-' },
+        { label: 'Address', value: supplier.address || '-' },
+        { label: 'Status', value: supplier.status },
+        { label: 'Notes', value: supplier.notes || '-' },
+      ],
+    });
+  };
+
+  const printSupplierOrder = (order: SupplierOrder) => {
+    printDocument({
+      title: 'Supplier Order',
+      subtitle: `#${order.id}`,
+      fields: [
+        { label: 'Supplier', value: order.supplier?.name || '-' },
+        { label: 'Order Date', value: format(new Date(order.orderDate), 'dd/MM/yyyy') },
+        { label: 'Total Amount', value: formatCurrency(order.totalAmount) },
+        { label: 'Paid Amount', value: formatCurrency(order.paidAmount) },
+        { label: 'Balance', value: formatCurrency(order.totalAmount - order.paidAmount) },
+        { label: 'Status', value: getStatusLabel(order.status) },
+        { label: 'Notes', value: order.notes || '-' },
+      ],
+    });
+  };
+
   const exportSupplierToExcel = () => {
     if (!selectedSupplier) return;
     const stats = getSupplierStats();
@@ -746,6 +824,7 @@ export default function Suppliers() {
                       <Eye className="h-4 w-4 mr-1" />
                       Summary
                     </Button>
+                    <PrintButton onClick={() => printSupplier(supplier)} label="Print supplier" />
                     <Button
                       size="sm"
                       variant="outline"
@@ -852,6 +931,7 @@ export default function Suppliers() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex justify-center gap-1">
+                        <PrintButton onClick={() => printSupplierOrder(order)} label="Print order" />
                         <Button
                           size="sm"
                           variant="outline"
@@ -926,6 +1006,7 @@ export default function Suppliers() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <PrintButton onClick={() => printSupplierOrder(order)} label="Print order" />
                   <Button
                     size="sm"
                     variant="outline"
@@ -1534,6 +1615,14 @@ export default function Suppliers() {
                               <p className="text-xs text-gray-500 mt-1">{payment.notes}</p>
                             )}
                           </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => printSupplierPayment(payment, order)}
+                            className="text-purple-600 hover:bg-purple-50 mr-2"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"

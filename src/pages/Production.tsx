@@ -12,6 +12,8 @@ import { ProductionStatus, ProductionStep } from '@/types';
 import { Plus, CheckCircle2, Clock, ArrowDown, Package, Edit2, Trash2, TrendingUp, AlertTriangle, Factory, ChevronRight, Layers, BarChart3 } from 'lucide-react';
 import { formatDate, getStepLabel } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { printDocument } from '@/lib/print';
 
 export function Production() {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
@@ -153,6 +155,35 @@ export function Production() {
       console.error('Failed to delete production record:', error);
       toast.error('Failed to delete production. Please try again.', { id: loadingToast });
     }
+  };
+
+  const printOrder = (order: ProductionOrder) => {
+    printDocument({
+      title: 'Production Order',
+      subtitle: `#${order.id}`,
+      fields: [
+        { label: 'Model', value: order.model?.name || '-' },
+        { label: 'Quantity', value: order.quantity },
+        { label: 'Status', value: order.status },
+        { label: 'Start Date', value: formatDate(order.startDate) },
+      ],
+    });
+  };
+
+  const printProductionRecord = (prod: DailyProduction) => {
+    printDocument({
+      title: 'Production Record',
+      subtitle: `#${prod.id}`,
+      fields: [
+        { label: 'Order', value: `#${prod.orderId}` },
+        { label: 'Step', value: getStepLabel(prod.step) },
+        { label: 'Date', value: formatDate(prod.date) },
+        { label: 'Entered', value: prod.quantityEntered },
+        { label: 'Completed', value: prod.quantityCompleted },
+        { label: 'Lost', value: prod.quantityLost },
+        { label: 'Notes', value: prod.notes || '-' },
+      ],
+    });
   };
 
   const productionSteps = [
@@ -729,6 +760,7 @@ export function Production() {
                         >
                           {order.status === ProductionStatus.FINISHED ? 'Done' : 'Active'}
                         </span>
+                        <PrintButton onClick={(e) => { e?.stopPropagation(); printOrder(order); }} label="Print order" />
                         <button
                           onClick={(e) => { e.stopPropagation(); setEditingOrder(order); setShowOrderForm(true); }}
                           className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
@@ -923,6 +955,7 @@ export function Production() {
                               <div className="flex gap-1">
                                 {dailyProduction.filter((p: DailyProduction) => p.orderId === selectedOrder.id && p.step === stepInfo.step).slice(0, 3).map((prod: DailyProduction) => (
                                   <div key={prod.id} className="flex gap-0.5">
+                                    <PrintButton onClick={() => printProductionRecord(prod)} label="Print record" />
                                     <button
                                       onClick={() => { setEditingProduction(prod); setShowProductionForm(true); }}
                                       className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-colors"

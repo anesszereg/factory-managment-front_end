@@ -99,6 +99,18 @@ const SalaryAllowances: React.FC = () => {
     }
   };
 
+  const getDailyRate = (monthlySalary: number) => monthlySalary / 30;
+
+  const getTotalEarningsForCurrentMonth = (monthlySalary: number, hireDate: string) => {
+    const dailyRate = getDailyRate(monthlySalary);
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    const hire = new Date(hireDate);
+    const startDate = hire > monthStart ? hire : monthStart;
+    const daysWorked = differenceInDays(today, startDate) + 1;
+    return dailyRate * Math.max(0, daysWorked);
+  };
+
   // Get all employees with their salary cycle status, grouped by urgency
   const getPaymentAlerts = () => {
     if (!salarySummary?.employees) return { overdue: [], today: [], thisWeek: [], upcoming: [], later: [] };
@@ -106,7 +118,12 @@ const SalaryAllowances: React.FC = () => {
     const enriched = salarySummary.employees.map((emp: any) => {
       const cycleEnd = new Date(emp.salaryCycle.end);
       const daysLeft = differenceInDays(cycleEnd, today);
-      return { ...emp, daysLeft, cycleEnd };
+      const employee = employees.find(e => e.id === emp.id);
+      const dailyRate = getDailyRate(emp.monthlySalary);
+      const totalEarningsCurrentMonth = employee
+        ? getTotalEarningsForCurrentMonth(emp.monthlySalary, employee.hireDate)
+        : 0;
+      return { ...emp, daysLeft, cycleEnd, employee, dailyRate, totalEarningsCurrentMonth };
     });
 
     return {
@@ -196,6 +213,47 @@ const SalaryAllowances: React.FC = () => {
     setShowForm(false);
   };
 
+  const printAllowance = (allowance: SalaryAllowance) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Allowance Receipt #${allowance.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+              .title { font-size: 24px; font-weight: bold; margin: 0; }
+              .subtitle { font-size: 14px; color: #666; }
+              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .label { font-weight: bold; color: #333; }
+              .value { color: #000; }
+              .total { font-size: 18px; font-weight: bold; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+              @media print { body { padding: 10px; } }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <p class="title">Salary Allowance Receipt</p>
+              <p class="subtitle">#${allowance.id}</p>
+            </div>
+            <div class="row"><span class="label">Employee:</span><span class="value">${allowance.employee?.firstName || ''} ${allowance.employee?.lastName || ''}</span></div>
+            <div class="row"><span class="label">Date:</span><span class="value">${format(new Date(allowance.date), 'dd/MM/yyyy')}</span></div>
+            <div class="row"><span class="label">Description:</span><span class="value">${allowance.description || '-'}</span></div>
+            <div class="total row"><span class="label">Amount:</span><span class="value">${formatCurrency(allowance.amount)}</span></div>
+            <div class="footer">
+              <p>Factory Management Platform</p>
+              <p>Printed on ${new Date().toLocaleString()}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   if (loading) {
     return <PageLoading />;
   }
@@ -273,6 +331,14 @@ const SalaryAllowances: React.FC = () => {
                       <p className={`text-sm font-bold ${emp.remainingSalary > 0 ? 'text-green-600' : 'text-gray-500'}`}>
                         {formatCurrency(emp.remainingSalary)}
                       </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Daily Rate (7.5h)</p>
+                      <p className="text-sm font-bold text-blue-600">{formatCurrency(emp.dailyRate)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-500">Current Month Total</p>
+                      <p className="text-sm font-bold text-indigo-600">{formatCurrency(emp.totalEarningsCurrentMonth)}</p>
                     </div>
                   </div>
                 </div>
@@ -461,6 +527,12 @@ const SalaryAllowances: React.FC = () => {
                   )}
                   <div className="flex gap-4 pt-2 border-t border-gray-200">
                     <button
+                      onClick={() => printAllowance(allowance)}
+                      className="text-purple-600 hover:text-purple-900 text-sm font-medium"
+                    >
+                      Print
+                    </button>
+                    <button
                       onClick={() => handleEdit(allowance)}
                       className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                     >
@@ -528,6 +600,12 @@ const SalaryAllowances: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => printAllowance(allowance)}
+                          className="text-purple-600 hover:text-purple-900 mr-4"
+                        >
+                          Print
+                        </button>
                         <button
                           onClick={() => handleEdit(allowance)}
                           className="text-blue-600 hover:text-blue-900 mr-4"

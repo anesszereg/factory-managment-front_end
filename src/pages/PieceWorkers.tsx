@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Plus, Users, Receipt, DollarSign, Calendar, Edit2, Trash2, Printer, X, CreditCard, Eye, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { printDocument } from '../lib/print';
 import { pieceWorkersApi, dailyPieceReceiptsApi } from '../services/api';
 import { PieceWorker, PieceWorkerStatus, DailyPieceReceipt, PaymentStatus } from '../types';
 import { Textarea } from '../components/ui/Textarea';
@@ -55,14 +56,17 @@ export default function PieceWorkers() {
     items: [{ itemName: '', quantity: 0, pricePerPiece: 0 }] as ReceiptItemForm[],
     paidAmount: 0,
     notes: '',
+    createExpense: true,
   });
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentReceiptId, setPaymentReceiptId] = useState<number | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentCreateExpense, setPaymentCreateExpense] = useState(true);
   const [showWorkerSummary, setShowWorkerSummary] = useState(false);
   const [summaryWorker, setSummaryWorker] = useState<PieceWorker | null>(null);
   const [showWorkerPaymentDialog, setShowWorkerPaymentDialog] = useState(false);
   const [workerPaymentAmount, setWorkerPaymentAmount] = useState(0);
+  const [workerPaymentCreateExpense, setWorkerPaymentCreateExpense] = useState(true);
   const [lastWorkerPayment, setLastWorkerPayment] = useState<{
     worker: PieceWorker;
     amount: number;
@@ -149,6 +153,7 @@ export default function PieceWorkers() {
         items: validItems,
         paidAmount: receiptFormData.paidAmount,
         notes: receiptFormData.notes,
+        createExpense: receiptFormData.createExpense,
       };
       
       if (editingReceipt) {
@@ -170,11 +175,12 @@ export default function PieceWorkers() {
     
     const loadingToast = toast.loading('Adding payment...');
     try {
-      await dailyPieceReceiptsApi.addPayment(paymentReceiptId, paymentAmount);
+      await dailyPieceReceiptsApi.addPayment(paymentReceiptId, paymentAmount, paymentCreateExpense);
       toast.success('Payment added successfully', { id: loadingToast });
       setShowPaymentDialog(false);
       setPaymentReceiptId(null);
       setPaymentAmount(0);
+      setPaymentCreateExpense(true);
       fetchReceipts();
     } catch (error) {
       toast.error('Failed to add payment', { id: loadingToast });
@@ -281,7 +287,7 @@ export default function PieceWorkers() {
         const paymentForReceipt = Math.min(remainingPayment, receiptRemaining);
         
         if (paymentForReceipt > 0) {
-          await dailyPieceReceiptsApi.addPayment(receipt.id, paymentForReceipt);
+          await dailyPieceReceiptsApi.addPayment(receipt.id, paymentForReceipt, workerPaymentCreateExpense);
           paidReceipts.push({ id: receipt.id, amount: paymentForReceipt });
           remainingPayment -= paymentForReceipt;
         }
@@ -299,6 +305,7 @@ export default function PieceWorkers() {
       
       toast.success('Payment processed successfully', { id: loadingToast });
       setShowWorkerPaymentDialog(false);
+      setWorkerPaymentCreateExpense(true);
       setShowPaymentReceipt(true);
       fetchReceipts();
     } catch (error) {
@@ -444,6 +451,19 @@ export default function PieceWorkers() {
       printWindow.document.close();
       printWindow.print();
     }
+  };
+
+  const printWorker = (worker: PieceWorker) => {
+    printDocument({
+      title: 'Piece Worker Profile',
+      subtitle: `#${worker.id}`,
+      fields: [
+        { label: 'Name', value: `${worker.firstName} ${worker.lastName}` },
+        { label: 'Phone', value: worker.phone || '-' },
+        { label: 'Price Per Piece', value: formatCurrency(worker.pricePerPiece) },
+        { label: 'Status', value: worker.status },
+      ],
+    });
   };
 
   const printWorkerSummary = () => {
@@ -624,6 +644,7 @@ export default function PieceWorkers() {
       })) || [{ itemName: '', quantity: 0, pricePerPiece: 0 }],
       paidAmount: receipt.paidAmount,
       notes: receipt.notes || '',
+      createExpense: !!receipt.expenseId,
     });
     setShowReceiptForm(true);
   };
@@ -647,6 +668,7 @@ export default function PieceWorkers() {
       items: [{ itemName: '', quantity: 0, pricePerPiece: 0 }],
       paidAmount: 0,
       notes: '',
+      createExpense: true,
     });
     setEditingReceipt(null);
     setShowReceiptForm(false);
@@ -660,6 +682,7 @@ export default function PieceWorkers() {
       items: [{ itemName: '', quantity: 0, pricePerPiece: worker?.pricePerPiece || 0 }],
       paidAmount: 0,
       notes: '',
+      createExpense: true,
     });
     setShowReceiptForm(true);
   };
@@ -1110,6 +1133,17 @@ export default function PieceWorkers() {
                     </span>
                   </div>
                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        printWorker(worker);
+                      }}
+                      className="text-purple-600 hover:text-purple-900 text-xs font-medium flex items-center"
+                      title="Print Worker"
+                    >
+                      <Printer className="h-3 w-3 mr-1" />
+                      Print
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1564,6 +1598,18 @@ export default function PieceWorkers() {
               placeholder="Optional notes..."
               rows={2}
             />
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="createExpense"
+                checked={receiptFormData.createExpense}
+                onChange={(e) => setReceiptFormData({ ...receiptFormData, createExpense: e.target.checked })}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="createExpense" className="text-sm text-gray-700">
+                Also record payment as expense
+              </label>
+            </div>
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button type="button" variant="outline" onClick={resetReceiptForm}>
                 Cancel
@@ -1590,6 +1636,18 @@ export default function PieceWorkers() {
               onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
               placeholder="Enter payment amount"
             />
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="paymentCreateExpense"
+                checked={paymentCreateExpense}
+                onChange={(e) => setPaymentCreateExpense(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <label htmlFor="paymentCreateExpense" className="text-sm text-gray-700">
+                Also record payment as expense
+              </label>
+            </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
                 Cancel
@@ -1802,6 +1860,19 @@ export default function PieceWorkers() {
                     </div>
                   </div>
                 )}
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="workerPaymentCreateExpense"
+                    checked={workerPaymentCreateExpense}
+                    onChange={(e) => setWorkerPaymentCreateExpense(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="workerPaymentCreateExpense" className="text-sm text-gray-700">
+                    Also record payment as expense
+                  </label>
+                </div>
 
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" onClick={() => setShowWorkerPaymentDialog(false)} className="flex-1">

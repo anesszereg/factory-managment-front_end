@@ -11,6 +11,8 @@ import { ExpenseCategory } from '@/types';
 import { Plus, DollarSign, TrendingUp, CreditCard, Edit2, Trash2, Wallet, ArrowDownRight, PieChart, Receipt } from 'lucide-react';
 import { PageLoading } from '../components/ui/Loading';
 import { formatDate, formatCurrency, getCategoryLabel } from '@/lib/utils';
+import { PrintButton } from '@/components/ui/PrintButton';
+import { printDocument } from '@/lib/print';
 
 export function Expenses() {
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
@@ -93,6 +95,20 @@ export function Expenses() {
       console.error('Failed to delete expense:', error);
       toast.error('Failed to delete expense. Please try again.', { id: loadingToast });
     }
+  };
+
+  const printExpense = (expense: DailyExpense) => {
+    printDocument({
+      title: 'Expense Receipt',
+      subtitle: `#${expense.id}`,
+      fields: [
+        { label: 'Date', value: formatDate(expense.date) },
+        { label: 'Category', value: getCategoryLabel(expense.category) },
+        { label: 'Amount', value: formatCurrency(expense.amount) },
+        { label: 'Payment Method', value: expense.paymentMethod || '-' },
+        { label: 'Description', value: expense.description || '-' },
+      ],
+    });
   };
 
   if (loading) {
@@ -533,6 +549,7 @@ export function Expenses() {
                         <p className="text-sm text-gray-600 mb-2">{expense.description}</p>
                       )}
                       <div className="flex gap-2 pt-2 border-t border-gray-200/50">
+                        <PrintButton onClick={() => printExpense(expense)} />
                         <button
                           onClick={() => handleEdit(expense)}
                           className="p-1.5 rounded-lg hover:bg-white/60 text-blue-600 transition-colors"
@@ -588,6 +605,7 @@ export function Expenses() {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                             <div className="flex justify-center gap-1">
+                              <PrintButton onClick={() => printExpense(expense)} label="Print expense" />
                               <button
                                 onClick={() => handleEdit(expense)}
                                 className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"

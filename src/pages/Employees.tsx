@@ -3,6 +3,8 @@ import { employeesApi } from '../services/api';
 import { Employee, EmployeeStatus } from '../types';
 import { format } from 'date-fns';
 import { PageLoading } from '../components/ui/Loading';
+import { PrintButton } from '../components/ui/PrintButton';
+import { printDocument } from '../lib/print';
 
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -82,6 +84,21 @@ const Employees: React.FC = () => {
         alert(error.response?.data?.error || 'Error deleting employee');
       }
     }
+  };
+
+  const printEmployee = (employee: Employee) => {
+    printDocument({
+      title: 'Employee Profile',
+      subtitle: `#${employee.id}`,
+      fields: [
+        { label: 'Name', value: `${employee.firstName} ${employee.lastName}` },
+        { label: 'Phone', value: employee.phone || '-' },
+        { label: 'Address', value: employee.address || '-' },
+        { label: 'Monthly Salary', value: `$${employee.monthlySalary.toFixed(2)}` },
+        { label: 'Status', value: employee.status.replace('_', ' ') },
+        { label: 'Hire Date', value: format(new Date(employee.hireDate), 'MMM dd, yyyy') },
+      ],
+    });
   };
 
   const resetForm = () => {
@@ -279,6 +296,7 @@ const Employees: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-3 pt-3 border-t border-gray-100">
+              <PrintButton onClick={() => printEmployee(employee)} showLabel />
               <button
                 onClick={() => handleEdit(employee)}
                 className="flex-1 text-center text-blue-600 hover:text-blue-900 py-2 text-sm font-medium"
@@ -354,9 +372,10 @@ const Employees: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <PrintButton onClick={() => printEmployee(employee)} label="Print employee" />
                     <button
                       onClick={() => handleEdit(employee)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
+                      className="text-blue-600 hover:text-blue-900 ml-4 mr-4"
                     >
                       Edit
                     </button>
