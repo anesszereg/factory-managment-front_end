@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import { Plus, Users, Receipt, DollarSign, Calendar, Edit2, Trash2, Printer, X, CreditCard, Eye, Download } from 'lucide-react';
+import { Plus, Users, Receipt, DollarSign, Calendar, Edit2, Trash2, Printer, X, CreditCard, Eye, Download, Search, UserCircle, TrendingUp, Wallet, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { printDocument } from '../lib/print';
 import { pieceWorkersApi, dailyPieceReceiptsApi } from '../services/api';
@@ -41,6 +41,7 @@ export default function PieceWorkers() {
   const [filterWorkerId, setFilterWorkerId] = useState<number | ''>('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [workerSearch, setWorkerSearch] = useState('');
 
   const [workerFormData, setWorkerFormData] = useState({
     firstName: '',
@@ -714,6 +715,34 @@ export default function PieceWorkers() {
     return receiptFormData.items.reduce((sum, item) => sum + (item.quantity * item.pricePerPiece), 0);
   };
 
+  const getInitials = (firstName: string, lastName?: string) => {
+    const first = firstName?.charAt(0).toUpperCase() || '';
+    const last = lastName?.charAt(0).toUpperCase() || '';
+    return first + last;
+  };
+
+  const getWorkerInitials = (worker: PieceWorker) => getInitials(worker.firstName, worker.lastName);
+
+  const getAvatarColor = (id: number) => {
+    const colors = [
+      'bg-blue-500 text-white',
+      'bg-emerald-500 text-white',
+      'bg-violet-500 text-white',
+      'bg-amber-500 text-white',
+      'bg-rose-500 text-white',
+      'bg-cyan-500 text-white',
+      'bg-indigo-500 text-white',
+      'bg-orange-500 text-white',
+    ];
+    return colors[id % colors.length];
+  };
+
+  const searchedWorkers = workers.filter((w) => {
+    const search = workerSearch.toLowerCase();
+    const fullName = `${w.firstName} ${w.lastName}`.toLowerCase();
+    return fullName.includes(search) || w.phone?.toLowerCase().includes(search);
+  });
+
   const getPaymentStatusBadge = (status: PaymentStatus) => {
     switch (status) {
       case PaymentStatus.PAID:
@@ -949,11 +978,12 @@ export default function PieceWorkers() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Piece Workers</h1>
-          <p className="mt-1 sm:mt-2 text-sm text-gray-600">
-            Manage piece-rate workers and daily receipts
+          <p className="mt-1 text-sm text-gray-600">
+            Manage piece-rate workers and track daily receipts
           </p>
         </div>
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
@@ -963,7 +993,7 @@ export default function PieceWorkers() {
             onClick={openWorkerPayment}
             disabled={!selectedWorker}
           >
-            <CreditCard className="h-4 w-4 mr-2" />
+            <Wallet className="h-4 w-4 mr-2" />
             Pay Worker
           </Button>
           <Button className="w-full sm:w-auto" variant="outline" onClick={() => openNewReceipt()}>
@@ -987,388 +1017,482 @@ export default function PieceWorkers() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
+      {/* Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
+          <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Workers</p>
+                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Workers</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{workers.length}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-blue-500 mt-1">
                   {workers.filter(w => w.status === PieceWorkerStatus.ACTIVE).length} active
                 </p>
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
+          <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Today's Items</p>
+                <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Today</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{totalItemsToday}</p>
-                <p className="text-xs text-gray-500 mt-1">items completed</p>
+                <p className="text-xs text-green-500 mt-1">items completed</p>
               </div>
-              <Receipt className="h-8 w-8 text-green-500" />
+              <div className="p-2 bg-green-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-green-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Show selected worker balance or today's payout */}
-        {selectedWorker ? (
-          <>
-            <Card className="border-2 border-green-200 bg-green-50/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600">
-                      {selectedWorker.firstName}'s Earned
-                    </p>
-                    <p className="text-2xl font-bold text-green-700 mt-1">
-                      {formatCurrency(getSelectedWorkerBalance().totalAmount)}
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">total earned</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
+        <Card className="bg-gradient-to-br from-orange-50 to-white border-orange-100">
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Today Payout</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountToday)}</p>
+                <p className="text-xs text-orange-500 mt-1">{todayReceipts.length} receipts</p>
+              </div>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <DollarSign className="h-6 w-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card className="border-2 border-red-200 bg-red-50/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-red-600">
-                      {selectedWorker.firstName}'s Balance
-                    </p>
-                    <p className="text-2xl font-bold text-red-700 mt-1">
-                      {formatCurrency(getSelectedWorkerBalance().totalRemaining)}
-                    </p>
-                    <p className="text-xs text-red-600 mt-1">
-                      {getSelectedWorkerBalance().unpaidReceipts.length} unpaid receipts
-                    </p>
-                  </div>
-                  <CreditCard className="h-8 w-8 text-red-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Today's Payout</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountToday)}</p>
-                    <p className="text-xs text-gray-500 mt-1">total amount</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-orange-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Filtered Total</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountFiltered)}</p>
-                    <p className="text-xs text-gray-500 mt-1">{filteredReceipts.length} receipts</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Filtered</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalAmountFiltered)}</p>
+                <p className="text-xs text-purple-500 mt-1">{filteredReceipts.length} receipts</p>
+              </div>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Calendar className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      {/* Selected Worker Snapshot */}
+      {selectedWorker && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Card className="md:col-span-2 bg-gradient-to-r from-indigo-50 to-white border-indigo-100">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-3">
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-lg font-bold ${getAvatarColor(selectedWorker.id)}`}>
+                  {getWorkerInitials(selectedWorker)}
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900">
+                    {selectedWorker.firstName} {selectedWorker.lastName}
+                  </p>
+                  <p className="text-sm text-gray-500">{selectedWorker.phone || 'No phone'}</p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={() => printWorker(selectedWorker)}
+                    className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                    title="Print Worker"
+                  >
+                    <Printer className="h-4 w-4" />
+                  </button>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(selectedWorker.status)}`}>
+                    {selectedWorker.status}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-red-50 to-white border-red-100">
+            <CardContent className="pt-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-red-600 uppercase tracking-wide">Balance Due</p>
+                  <p className="text-xl font-bold text-red-700 mt-1">
+                    {formatCurrency(getSelectedWorkerBalance().totalRemaining)}
+                  </p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {getSelectedWorkerBalance().unpaidReceipts.length} unpaid
+                  </p>
+                </div>
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <CreditCard className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center">
-                <Users className="h-5 w-5 mr-2" />
+                <Users className="h-5 w-5 mr-2 text-blue-600" />
                 Workers
               </CardTitle>
+              <span className="text-xs font-medium text-gray-500">
+                {workers.length} total
+              </span>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <Select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as PieceWorkerStatus | '')}
-              >
-                <option value="">All Status</option>
-                <option value={PieceWorkerStatus.ACTIVE}>Active</option>
-                <option value={PieceWorkerStatus.INACTIVE}>Inactive</option>
-              </Select>
-            </div>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {workers.map((worker) => (
-                <div
-                  key={worker.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    selectedWorker?.id === worker.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setSelectedWorker(worker)}
+            <div className="space-y-3 mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search workers..."
+                  value={workerSearch}
+                  onChange={(e) => setWorkerSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-400" />
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as PieceWorkerStatus | '')}
+                  className="text-sm"
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {worker.firstName} {worker.lastName}
-                      </p>
-                      <p className="text-sm text-gray-500">{worker.phone || 'No phone'}</p>
-                      <p className="text-sm font-semibold text-green-600 mt-1">
-                        {formatCurrency(worker.pricePerPiece)}/piece
-                      </p>
+                  <option value="">All Status</option>
+                  <option value={PieceWorkerStatus.ACTIVE}>Active</option>
+                  <option value={PieceWorkerStatus.INACTIVE}>Inactive</option>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1">
+              {searchedWorkers.map((worker) => {
+                const workerReceipts = receipts.filter(r => r.pieceWorkerId === worker.id);
+                const balance = workerReceipts.reduce((sum, r) => sum + (r.totalAmount - r.paidAmount), 0);
+                return (
+                  <div
+                    key={worker.id}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
+                      selectedWorker?.id === worker.id
+                        ? 'border-blue-500 bg-blue-50/50 shadow-sm'
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    }`}
+                    onClick={() => setSelectedWorker(worker)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${getAvatarColor(worker.id)}`}>
+                        {getWorkerInitials(worker)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <p className="font-semibold text-gray-900 truncate">
+                            {worker.firstName} {worker.lastName}
+                          </p>
+                          <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap ${getStatusBadgeClass(worker.status)}`}>
+                            {worker.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 truncate">{worker.phone || 'No phone'}</p>
+                        <p className="text-xs font-semibold text-green-600 mt-0.5">
+                          {formatCurrency(worker.pricePerPiece)}/piece
+                        </p>
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(worker.status)}`}>
-                      {worker.status}
-                    </span>
+                    {balance > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                        <span className="text-xs text-gray-500">Balance</span>
+                        <span className="text-xs font-bold text-red-600">{formatCurrency(balance)}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openNewReceipt(worker);
+                        }}
+                        className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
+                        title="New Receipt"
+                      >
+                        <Receipt className="h-3 w-3 mr-1" />
+                        Receipt
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openWorkerSummary(worker);
+                        }}
+                        className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
+                        title="Summary"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Summary
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditWorker(worker);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteWorker(worker.id);
+                        }}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        printWorker(worker);
-                      }}
-                      className="text-purple-600 hover:text-purple-900 text-xs font-medium flex items-center"
-                      title="Print Worker"
-                    >
-                      <Printer className="h-3 w-3 mr-1" />
-                      Print
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openWorkerSummary(worker);
-                      }}
-                      className="text-purple-600 hover:text-purple-900 text-xs font-medium flex items-center"
-                      title="View Summary"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      Summary
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openNewReceipt(worker);
-                      }}
-                      className="text-green-600 hover:text-green-900 text-xs font-medium"
-                    >
-                      + Receipt
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditWorker(worker);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 text-xs font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteWorker(worker.id);
-                      }}
-                      className="text-red-600 hover:text-red-900 text-xs font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                );
+              })}
+              {searchedWorkers.length === 0 && (
+                <div className="text-center py-8">
+                  <UserCircle className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No workers found</p>
                 </div>
-              ))}
-              {workers.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No workers found</p>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Receipt className="h-5 w-5 mr-2" />
-              Daily Receipts
-            </CardTitle>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="flex items-center">
+                <Receipt className="h-5 w-5 mr-2 text-blue-600" />
+                Daily Receipts
+              </CardTitle>
+              <span className="text-xs font-medium text-gray-500">
+                {filteredReceipts.length} receipts
+              </span>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <Select
-                value={filterWorkerId}
-                onChange={(e) => setFilterWorkerId(e.target.value ? parseInt(e.target.value) : '')}
-              >
-                <option value="">All Workers</option>
-                {workers.map((worker) => (
-                  <option key={worker.id} value={worker.id}>
-                    {worker.firstName} {worker.lastName}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                placeholder="Start date"
-              />
-              <Input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                placeholder="End date"
-              />
-            </div>
-
-            {(filterWorkerId || filterStartDate || filterEndDate) && (
-              <div className="flex justify-between items-center mb-4 p-2 bg-blue-50 rounded-lg">
-                <span className="text-sm text-blue-700">
-                  Showing {filteredReceipts.length} receipts • Total: {formatCurrency(totalAmountFiltered)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFilterWorkerId('');
-                    setFilterStartDate('');
-                    setFilterEndDate('');
-                  }}
-                >
-                  Clear
-                </Button>
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Filters</span>
+                {(filterWorkerId || filterStartDate || filterEndDate) && (
+                  <button
+                    onClick={() => {
+                      setFilterWorkerId('');
+                      setFilterStartDate('');
+                      setFilterEndDate('');
+                    }}
+                    className="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
-            )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Select
+                  value={filterWorkerId}
+                  onChange={(e) => setFilterWorkerId(e.target.value ? parseInt(e.target.value) : '')}
+                >
+                  <option value="">All Workers</option>
+                  {workers.map((worker) => (
+                    <option key={worker.id} value={worker.id}>
+                      {worker.firstName} {worker.lastName}
+                    </option>
+                  ))}
+                </Select>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">From</label>
+                  <Input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">To</label>
+                  <Input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+              {(filterWorkerId || filterStartDate || filterEndDate) && (
+                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    Total: <span className="text-green-600 font-bold">{formatCurrency(totalAmountFiltered)}</span>
+                  </span>
+                  <span className="text-xs text-gray-500">{filteredReceipts.length} receipts</span>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Card View */}
             <div className="block md:hidden space-y-3">
               {filteredReceipts.map((receipt) => {
                 const worker = workers.find(w => w.id === receipt.pieceWorkerId);
+                const remaining = receipt.totalAmount - receipt.paidAmount;
                 return (
-                  <div key={receipt.id} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {worker?.firstName} {worker?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {format(new Date(receipt.date), 'MMM dd, yyyy')}
-                        </p>
+                  <div key={receipt.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${getAvatarColor(receipt.pieceWorkerId)}`}>
+                          {getInitials(worker?.firstName || '?', worker?.lastName)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {worker?.firstName} {worker?.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {format(new Date(receipt.date), 'MMM dd, yyyy')}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-semibold text-green-600">
-                          {formatCurrency(receipt.totalAmount)}
-                        </p>
-                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${getPaymentStatusBadge(receipt.paymentStatus)}`}>
-                          {getPaymentStatusLabel(receipt.paymentStatus)}
-                        </span>
-                      </div>
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getPaymentStatusBadge(receipt.paymentStatus)}`}>
+                        {getPaymentStatusLabel(receipt.paymentStatus)}
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-600 mb-2">
+                    <div className="space-y-1 mb-3">
                       {receipt.items?.map((item, i) => (
-                        <div key={i} className="text-xs">
-                          {item.itemName}: {item.quantity} × {formatCurrency(item.pricePerPiece)} = {formatCurrency(item.totalPrice)}
+                        <div key={i} className="flex justify-between text-sm text-gray-600">
+                          <span>{item.itemName}</span>
+                          <span className="font-medium">{item.quantity} × {formatCurrency(item.pricePerPiece)}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="text-xs text-gray-500 mb-2">
-                      Paid: {formatCurrency(receipt.paidAmount)} | Remaining: {formatCurrency(receipt.totalAmount - receipt.paidAmount)}
+                    <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                      <div className="bg-green-50 rounded-lg p-2">
+                        <p className="text-xs text-green-600">Total</p>
+                        <p className="font-bold text-sm text-green-700">{formatCurrency(receipt.totalAmount)}</p>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-2">
+                        <p className="text-xs text-blue-600">Paid</p>
+                        <p className="font-bold text-sm text-blue-700">{formatCurrency(receipt.paidAmount)}</p>
+                      </div>
+                      <div className={`rounded-lg p-2 ${remaining > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs ${remaining > 0 ? 'text-red-600' : 'text-gray-600'}`}>Remaining</p>
+                        <p className={`font-bold text-sm ${remaining > 0 ? 'text-red-700' : 'text-gray-700'}`}>{formatCurrency(remaining)}</p>
+                      </div>
                     </div>
                     {receipt.notes && (
-                      <p className="text-xs text-gray-500 mb-2">{receipt.notes}</p>
+                      <p className="text-xs text-gray-500 mb-3 italic">{receipt.notes}</p>
                     )}
-                    <div className="flex gap-3 pt-2 border-t border-gray-200">
+                    <div className="flex gap-2 pt-2 border-t border-gray-100">
                       {receipt.paymentStatus !== PaymentStatus.PAID && (
                         <button
                           onClick={() => openPaymentDialog(receipt.id)}
-                          className="text-green-600 hover:text-green-900 text-sm font-medium"
+                          className="flex-1 bg-green-50 text-green-700 hover:bg-green-100 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
                         >
+                          <CreditCard className="h-3.5 w-3.5 mr-1" />
                           Pay
                         </button>
                       )}
                       <button
                         onClick={() => printReceipt(receipt)}
-                        className="text-purple-600 hover:text-purple-900 text-sm font-medium"
+                        className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
                       >
+                        <Printer className="h-3.5 w-3.5 mr-1" />
                         Print
                       </button>
                       <button
                         onClick={() => handleEditReceipt(receipt)}
-                        className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                       >
-                        Edit
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteReceipt(receipt.id)}
-                        className="text-red-600 hover:text-red-900 text-sm font-medium"
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                       >
-                        Delete
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
                 );
               })}
               {filteredReceipts.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No receipts found</p>
+                <div className="text-center py-8 bg-gray-50 rounded-xl">
+                  <Receipt className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No receipts found</p>
+                </div>
               )}
             </div>
 
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto max-h-[400px] overflow-y-auto">
+            <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto rounded-xl border border-gray-200">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Worker</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Worker</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Items</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Paid</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Remaining</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredReceipts.map((receipt) => {
                     const worker = workers.find(w => w.id === receipt.pieceWorkerId);
+                    const remaining = receipt.totalAmount - receipt.paidAmount;
                     return (
-                      <tr key={receipt.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      <tr key={receipt.id} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatarColor(receipt.pieceWorkerId)}`}>
+                              {getInitials(worker?.firstName || '?', worker?.lastName)}
+                            </div>
+                            <span className="text-sm font-medium text-gray-900">
+                              {worker?.firstName} {worker?.lastName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                           {format(new Date(receipt.date), 'MMM dd, yyyy')}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {worker?.firstName} {worker?.lastName}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          <div className="max-w-[200px]">
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div className="max-w-[200px] space-y-0.5">
                             {receipt.items?.map((item, i) => (
                               <div key={i} className="text-xs">
-                                {item.itemName} ({item.quantity} × {formatCurrency(item.pricePerPiece)})
+                                <span className="font-medium text-gray-700">{item.itemName}</span>
+                                <span className="text-gray-500"> × {item.quantity} @ {formatCurrency(item.pricePerPiece)}</span>
                               </div>
                             ))}
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-600 text-right">
                           {formatCurrency(receipt.totalAmount)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 text-right">
                           {formatCurrency(receipt.paidAmount)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusBadge(receipt.paymentStatus)}`}>
+                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${remaining > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                          {formatCurrency(remaining)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${getPaymentStatusBadge(receipt.paymentStatus)}`}>
                             {getPaymentStatusLabel(receipt.paymentStatus)}
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          <div className="flex space-x-2">
+                          <div className="flex items-center justify-center gap-1">
                             {receipt.paymentStatus !== PaymentStatus.PAID && (
                               <button
                                 onClick={() => openPaymentDialog(receipt.id)}
-                                className="text-green-600 hover:text-green-900"
+                                className="p-1.5 rounded-lg text-green-600 hover:bg-green-50"
                                 title="Add Payment"
                               >
                                 <CreditCard className="h-4 w-4" />
@@ -1376,21 +1500,21 @@ export default function PieceWorkers() {
                             )}
                             <button
                               onClick={() => printReceipt(receipt)}
-                              className="text-purple-600 hover:text-purple-900"
+                              className="p-1.5 rounded-lg text-purple-600 hover:bg-purple-50"
                               title="Print"
                             >
                               <Printer className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleEditReceipt(receipt)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50"
                               title="Edit"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteReceipt(receipt.id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1403,7 +1527,10 @@ export default function PieceWorkers() {
                 </tbody>
               </table>
               {filteredReceipts.length === 0 && (
-                <p className="text-center text-gray-500 py-8">No receipts found</p>
+                <div className="text-center py-8 bg-gray-50">
+                  <Receipt className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No receipts found</p>
+                </div>
               )}
             </div>
           </CardContent>

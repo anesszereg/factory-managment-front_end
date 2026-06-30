@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi } from '@/services/api';
 import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker, Supplier } from '@/types';
 import { MaterialUnit } from '@/types';
-import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer, Calendar } from 'lucide-react';
 import { formatDate, getUnitLabel, formatCurrency } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
 
@@ -989,115 +989,126 @@ export function Materials() {
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range Filter</label>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
+      <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Date Range Filter</span>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">From</label>
                 <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  placeholder="Start date"
-                  className="w-full sm:w-auto"
+                  className="text-sm"
                 />
-                <span className="text-gray-500 hidden sm:inline">to</span>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">To</label>
                 <Input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="End date"
-                  className="w-full sm:w-auto"
+                  className="text-sm"
                 />
-                {(startDate || endDate) && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setStartDate('');
-                      setEndDate('');
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Clear
-                  </Button>
-                )}
               </div>
-            </div>
-            <div className="text-sm text-gray-600">
-              {startDate || endDate ? (
-                <div className="bg-blue-50 px-4 py-2 rounded-lg">
-                  <p className="font-medium text-blue-900">Filtered Results</p>
-                  <p className="text-blue-700">
-                    {filteredPurchases.length} purchases • {filteredConsumption.length} consumption records
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-gray-50 px-4 py-2 rounded-lg">
-                  <p className="font-medium text-gray-900">All Time</p>
-                  <p className="text-gray-600">
-                    {purchases.length} purchases • {consumption.length} consumption records
-                  </p>
-                </div>
-              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex-shrink-0">
+            {startDate || endDate ? (
+              <div className="bg-blue-50 px-4 py-3 rounded-xl border border-blue-100">
+                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Filtered</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">{filteredPurchases.length} purchases</p>
+                <p className="text-sm text-blue-700">{filteredConsumption.length} consumption</p>
+              </div>
+            ) : (
+              <div className="bg-white px-4 py-3 rounded-xl border border-gray-200">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">All Time</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">{purchases.length} purchases</p>
+                <p className="text-sm text-gray-600">{consumption.length} consumption</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
+          <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Materials</p>
+                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Materials</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{materials.length}</p>
               </div>
-              <Package2 className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Purchased</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalSpent)}</p>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Package2 className="h-6 w-6 text-blue-600" />
               </div>
-              <ShoppingCart className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
+          <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Consumed</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalConsumedValue)}</p>
+                <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Purchased</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalSpent)}</p>
               </div>
-              <Minus className="h-8 w-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Inventory Value</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalMaterialsValue)}</p>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <ShoppingCart className="h-6 w-6 text-green-600" />
               </div>
-              <TrendingUp className="h-8 w-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-gradient-to-br from-red-50 to-white border-red-100">
+          <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
+                <p className="text-xs font-medium text-red-600 uppercase tracking-wide">Consumed</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalConsumedValue)}</p>
+              </div>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Minus className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Inventory Value</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">{formatCurrency(totalMaterialsValue)}</p>
+              </div>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-orange-50 to-white border-orange-100">
+          <CardContent className="pt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Low Stock</p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">{lowStockMaterials.length}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <AlertTriangle className="h-6 w-6 text-orange-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
