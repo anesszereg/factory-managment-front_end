@@ -39,10 +39,18 @@ const api = axios.create({
 export const furnitureModelsApi = {
   getAll: () => api.get<FurnitureModel[]>('/furniture-models'),
   getById: (id: number) => api.get<FurnitureModel>(`/furniture-models/${id}`),
-  create: (data: { name: string; description?: string; size: string }) => 
-    api.post<FurnitureModel>('/furniture-models', data),
-  update: (id: number, data: { name?: string; description?: string; size?: string }) => 
-    api.put<FurnitureModel>(`/furniture-models/${id}`, data),
+  create: (data: {
+    name: string;
+    description?: string;
+    size: string;
+    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+  }) => api.post<FurnitureModel>('/furniture-models', data),
+  update: (id: number, data: {
+    name?: string;
+    description?: string;
+    size?: string;
+    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+  }) => api.put<FurnitureModel>(`/furniture-models/${id}`, data),
   delete: (id: number) => api.delete(`/furniture-models/${id}`),
 };
 
@@ -117,13 +125,15 @@ export const materialPurchasesApi = {
   create: (data: {
     materialId: number;
     date: string;
-    supplier: string;
+    supplierId?: number;
+    supplierName?: string;
     quantity: number;
     unitPrice: number;
-    totalPrice: number;
+    totalPrice?: number;
   }) => api.post<MaterialPurchase>('/material-purchases', data),
   update: (id: number, data: {
-    supplier?: string;
+    supplierId?: number;
+    supplierName?: string;
     quantity?: number;
     unitPrice?: number;
     totalPrice?: number;
@@ -306,15 +316,17 @@ export const dailyPieceReceiptsApi = {
     items: { itemName: string; quantity: number; pricePerPiece: number }[];
     paidAmount?: number;
     notes?: string;
+    createExpense?: boolean;
   }) => api.post<DailyPieceReceipt>('/daily-piece-receipts', data),
   update: (id: number, data: {
     date?: string;
     items?: { itemName: string; quantity: number; pricePerPiece: number }[];
     paidAmount?: number;
     notes?: string;
+    createExpense?: boolean;
   }) => api.put<DailyPieceReceipt>(`/daily-piece-receipts/${id}`, data),
-  addPayment: (id: number, amount: number) => 
-    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount }),
+  addPayment: (id: number, amount: number, createExpense?: boolean) => 
+    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount, createExpense }),
   delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
   getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
     api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),

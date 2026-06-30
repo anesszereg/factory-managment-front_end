@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { dashboardApi, dailyExpensesApi, dailyProductionApi, rawMaterialsApi, productionOrdersApi, salaryAllowancesApi, employeesApi } from '@/services/api';
+import { dashboardApi, dailyExpensesApi, dailyProductionApi, productionOrdersApi, salaryAllowancesApi, employeesApi } from '@/services/api';
 import type { DashboardStats, DailyExpense, DailyProduction, ProductionOrder, SalaryAllowance, Employee } from '@/types';
-import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Calendar, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, Package, DollarSign, CheckCircle, TrendingUp, TrendingDown, Factory, ShoppingCart, Users, Wallet, Printer } from 'lucide-react';
 import { formatCurrency, getStepLabel, getUnitLabel, formatDate } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
+import { printDocument } from '@/lib/print';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 export function Dashboard() {
@@ -26,11 +27,10 @@ export function Dashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsRes, expensesRes, productionRes, , ordersRes, allowancesRes, employeesRes] = await Promise.all([
+      const [statsRes, expensesRes, productionRes, ordersRes, allowancesRes, employeesRes] = await Promise.all([
         dashboardApi.getStats(),
         dailyExpensesApi.getAll(),
         dailyProductionApi.getAll(),
-        rawMaterialsApi.getAll(),
         productionOrdersApi.getAll(),
         salaryAllowancesApi.getAll(),
         employeesApi.getAll({ status: 'ACTIVE' as any }),
@@ -124,6 +124,24 @@ export function Dashboard() {
   const expensePieData = Object.entries(expensesByCategory).map(([name, value]) => ({ name, value }));
   const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
+  const printDashboard = () => {
+    printDocument({
+      title: 'Dashboard Summary',
+      subtitle: `${startDate || 'All time'} to ${endDate || 'Now'}`,
+      fields: [
+        { label: 'Total Expenses', value: formatCurrency(totalExpenses) },
+        { label: 'Units Produced', value: totalProduced },
+        { label: 'Units Lost', value: totalLost },
+        { label: 'Active Orders', value: activeOrders },
+        { label: 'Completed Orders', value: completedOrders },
+        { label: 'Low Stock Items', value: stats.materials.lowStockCount },
+        { label: 'Total Allowances Paid', value: formatCurrency(totalAllowancesPaid) },
+        { label: 'Monthly Salary Budget', value: formatCurrency(totalMonthlySalaries) },
+      ],
+      footer: 'Generated from Factory Management Dashboard',
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -133,7 +151,13 @@ export function Dashboard() {
             Overview of production, materials, and expenses
           </p>
         </div>
-        <Calendar className="hidden sm:block h-8 w-8 text-blue-500 animate-pulse" />
+        <Button variant="outline" onClick={printDashboard} className="hidden sm:flex items-center">
+          <Printer className="h-4 w-4 mr-2" />
+          Print Summary
+        </Button>
+        <Button variant="outline" onClick={printDashboard} className="sm:hidden p-2" title="Print Summary">
+          <Printer className="h-5 w-5" />
+        </Button>
       </div>
 
       <Card>

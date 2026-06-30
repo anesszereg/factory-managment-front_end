@@ -34,6 +34,17 @@ export enum FurnitureSize {
   SIZE_120CM = 'SIZE_120CM'
 }
 
+export interface ModelMaterialRequirement {
+  id: number;
+  modelId: number;
+  step: ProductionStep;
+  materialId: number;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  material?: RawMaterial;
+}
+
 export interface FurnitureModel {
   id: number;
   name: string;
@@ -41,6 +52,7 @@ export interface FurnitureModel {
   size: FurnitureSize;
   createdAt: string;
   updatedAt: string;
+  materialRequirements?: ModelMaterialRequirement[];
 }
 
 export interface ProductionOrder {
@@ -82,13 +94,15 @@ export interface MaterialPurchase {
   id: number;
   materialId: number;
   date: string;
-  supplier: string;
+  supplierId?: number;
+  supplierName?: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
   createdAt: string;
   updatedAt: string;
   material?: RawMaterial;
+  supplier?: Supplier;
 }
 
 export interface MaterialConsumption {
@@ -261,6 +275,7 @@ export interface ReceiptItem {
 export interface DailyPieceReceipt {
   id: number;
   pieceWorkerId: number;
+  expenseId?: number;
   date: string;
   totalAmount: number;
   paidAmount: number;
@@ -269,6 +284,7 @@ export interface DailyPieceReceipt {
   createdAt: string;
   updatedAt: string;
   pieceWorker?: PieceWorker;
+  expense?: DailyExpense;
   items?: ReceiptItem[];
 }
 
