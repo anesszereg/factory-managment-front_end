@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
-import { incomesApi } from '@/services/api';
-import type { Income } from '@/types';
+import { incomesApi, moneyBoxApi } from '@/services/api';
+import type { Income, MoneyBox } from '@/types';
 import { IncomeSource } from '@/types';
 import { Plus, TrendingUp, DollarSign, Calendar, Edit2, Trash2, ArrowUpRight, Banknote, Layers } from 'lucide-react';
 import { formatDate, formatCurrency, getIncomeSourceLabel } from '@/lib/utils';
@@ -22,9 +22,12 @@ export function Incomes() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterSource, setFilterSource] = useState<string>('all');
+  const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
+  const [selectedMoneyBoxId, setSelectedMoneyBoxId] = useState<number>(0);
 
   useEffect(() => {
     loadIncomes();
+    moneyBoxApi.getAll().then(r => setMoneyBoxes(r.data)).catch(() => {});
   }, [startDate, endDate, filterSource]);
 
   const loadIncomes = async () => {
@@ -52,6 +55,7 @@ export function Incomes() {
       date: formData.get('date') as string,
       source: formData.get('source') as string,
       amount: parseFloat(formData.get('amount') as string),
+      moneyBoxId: selectedMoneyBoxId || undefined,
       paymentMethod: formData.get('paymentMethod') as string || undefined,
       description: formData.get('description') as string || undefined,
     };
@@ -77,6 +81,7 @@ export function Incomes() {
 
   const handleEdit = (income: Income) => {
     setEditingIncome(income);
+    setSelectedMoneyBoxId(income.moneyBoxId ?? 0);
     setShowForm(true);
   };
 
@@ -339,6 +344,20 @@ export function Incomes() {
                   defaultValue={editingIncome?.amount}
                   placeholder="0.00"
                 />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box)</label>
+                  <select
+                    value={selectedMoneyBoxId}
+                    onChange={e => setSelectedMoneyBoxId(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value={0}>-- Sans caisse --</option>
+                    {moneyBoxes.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.currentBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA)</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Le montant sera ajouté au solde de la caisse sélectionnée</p>
+                </div>
                 <Input
                   label="Payment Method"
                   name="paymentMethod"

@@ -193,6 +193,7 @@ export const dailyExpensesApi = {
     date?: string;
     category: ExpenseCategory;
     amount: number;
+    moneyBoxId?: number;
     paymentMethod?: string;
     description?: string;
   }) => api.post<DailyExpense>('/daily-expenses', data),
@@ -200,6 +201,7 @@ export const dailyExpensesApi = {
     date?: string;
     category?: ExpenseCategory;
     amount?: number;
+    moneyBoxId?: number;
     paymentMethod?: string;
     description?: string;
   }) => api.put<DailyExpense>(`/daily-expenses/${id}`, data),
@@ -219,6 +221,7 @@ export const incomesApi = {
     date?: string;
     source: string;
     amount: number;
+    moneyBoxId?: number;
     paymentMethod?: string;
     description?: string;
   }) => api.post<Income>('/incomes', data),
@@ -226,6 +229,7 @@ export const incomesApi = {
     date?: string;
     source?: string;
     amount?: number;
+    moneyBoxId?: number;
     paymentMethod?: string;
     description?: string;
   }) => api.put<Income>(`/incomes/${id}`, data),

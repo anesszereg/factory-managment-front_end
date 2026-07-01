@@ -21,6 +21,7 @@ export default function MoneyBoxPage() {
   const [showTxForm, setShowTxForm] = useState(false);
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [boxForm, setBoxForm] = useState({ name: '', description: '', currentBalance: 0, responsibleUser: '' });
@@ -45,28 +46,36 @@ export default function MoneyBoxPage() {
   useEffect(() => { loadAll(); }, [filterDate]);
 
   const handleCreateBox = async () => {
+    if (!boxForm.name.trim()) { setFormError('Le nom est obligatoire.'); return; }
+    setFormError(null);
     try {
       await moneyBoxApi.create(boxForm);
       setShowBoxForm(false);
       setBoxForm({ name: '', description: '', currentBalance: 0, responsibleUser: '' });
       loadAll();
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setFormError(e.response?.data?.error ?? e.message ?? 'Erreur serveur'); }
   };
 
   const handleCreateTx = async () => {
+    if (!txForm.moneyBoxId) { setFormError('Sélectionner une caisse.'); return; }
+    if (!txForm.amount || txForm.amount <= 0) { setFormError('Montant invalide.'); return; }
+    setFormError(null);
     try {
       await financialTransactionApi.create(txForm);
       setShowTxForm(false);
       loadAll();
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setFormError(e.response?.data?.error ?? e.message ?? 'Erreur serveur'); }
   };
 
   const handleTransfer = async () => {
+    if (!transferForm.fromId || !transferForm.toId) { setFormError('Sélectionner les deux caisses.'); return; }
+    if (!transferForm.amount || transferForm.amount <= 0) { setFormError('Montant invalide.'); return; }
+    setFormError(null);
     try {
       await moneyBoxApi.transfer(transferForm);
       setShowTransferForm(false);
       loadAll();
-    } catch (e) { console.error(e); }
+    } catch (e: any) { setFormError(e.response?.data?.error ?? e.message ?? 'Erreur serveur'); }
   };
 
   const handleDeleteBox = async (id: number) => {
@@ -239,6 +248,7 @@ export default function MoneyBoxPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold mb-4">Nouvelle Caisse</h2>
+            {formError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{formError}</p>}
             <div className="space-y-3">
               <div><label className="text-sm font-medium text-gray-700">Nom *</label><input value={boxForm.name} onChange={e => setBoxForm(p => ({ ...p, name: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" placeholder="Caisse principale" /></div>
               <div><label className="text-sm font-medium text-gray-700">Description</label><input value={boxForm.description} onChange={e => setBoxForm(p => ({ ...p, description: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
@@ -246,7 +256,7 @@ export default function MoneyBoxPage() {
               <div><label className="text-sm font-medium text-gray-700">Responsable</label><input value={boxForm.responsibleUser} onChange={e => setBoxForm(p => ({ ...p, responsibleUser: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setShowBoxForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={() => { setShowBoxForm(false); setFormError(null); }} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handleCreateBox} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Créer</button>
             </div>
           </div>
@@ -258,6 +268,7 @@ export default function MoneyBoxPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold mb-4">Nouvelle Transaction</h2>
+            {formError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{formError}</p>}
             <div className="space-y-3">
               <div><label className="text-sm font-medium text-gray-700">Caisse *</label>
                 <select value={txForm.moneyBoxId} onChange={e => setTxForm(p => ({ ...p, moneyBoxId: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
@@ -281,7 +292,7 @@ export default function MoneyBoxPage() {
               <div><label className="text-sm font-medium text-gray-700">Description</label><input value={txForm.description} onChange={e => setTxForm(p => ({ ...p, description: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setShowTxForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={() => { setShowTxForm(false); setFormError(null); }} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handleCreateTx} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Enregistrer</button>
             </div>
           </div>
@@ -293,6 +304,7 @@ export default function MoneyBoxPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
             <h2 className="text-lg font-bold mb-4">Transfert entre Caisses</h2>
+            {formError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{formError}</p>}
             <div className="space-y-3">
               <div><label className="text-sm font-medium text-gray-700">De</label>
                 <select value={transferForm.fromId} onChange={e => setTransferForm(p => ({ ...p, fromId: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
@@ -310,7 +322,7 @@ export default function MoneyBoxPage() {
               <div><label className="text-sm font-medium text-gray-700">Notes</label><input value={transferForm.description} onChange={e => setTransferForm(p => ({ ...p, description: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setShowTransferForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={() => { setShowTransferForm(false); setFormError(null); }} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handleTransfer} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Transférer</button>
             </div>
           </div>

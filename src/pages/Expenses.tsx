@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
-import { dailyExpensesApi } from '@/services/api';
-import type { DailyExpense } from '@/types';
+import { dailyExpensesApi, moneyBoxApi } from '@/services/api';
+import type { DailyExpense, MoneyBox } from '@/types';
 import { ExpenseCategory } from '@/types';
 import { Plus, DollarSign, TrendingUp, CreditCard, Edit2, Trash2, Wallet, ArrowDownRight, PieChart, Receipt } from 'lucide-react';
 import { PageLoading } from '../components/ui/Loading';
@@ -23,6 +23,8 @@ export function Expenses() {
   const [endDate, setEndDate] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterPayment, setFilterPayment] = useState<string>('all');
+  const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
+  const [selectedMoneyBoxId, setSelectedMoneyBoxId] = useState<number>(0);
 
   useEffect(() => {
     loadData();
@@ -30,10 +32,12 @@ export function Expenses() {
 
   const loadData = async () => {
     try {
-      const [expensesRes] = await Promise.all([
+      const [expensesRes, boxesRes] = await Promise.all([
         dailyExpensesApi.getAll(),
+        moneyBoxApi.getAll(),
       ]);
       setExpenses(expensesRes.data);
+      setMoneyBoxes(boxesRes.data);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load expenses data');
@@ -49,11 +53,13 @@ export function Expenses() {
     const loadingToast = toast.loading(editingExpense ? 'Updating expense...' : 'Creating expense...');
     
     try {
+      const moneyBoxId = selectedMoneyBoxId || undefined;
       if (editingExpense) {
         await dailyExpensesApi.update(editingExpense.id, {
           date: formData.get('date') as string,
           category: formData.get('category') as ExpenseCategory,
           amount: parseFloat(formData.get('amount') as string),
+          moneyBoxId,
           paymentMethod: formData.get('paymentMethod') as string || undefined,
           description: formData.get('description') as string || undefined,
         });
@@ -64,12 +70,14 @@ export function Expenses() {
           date: formData.get('date') as string,
           category: formData.get('category') as ExpenseCategory,
           amount: parseFloat(formData.get('amount') as string),
+          moneyBoxId,
           paymentMethod: formData.get('paymentMethod') as string || undefined,
           description: formData.get('description') as string || undefined,
         });
         toast.success('Expense created successfully!', { id: loadingToast });
       }
       setShowForm(false);
+      setSelectedMoneyBoxId(0);
       loadData();
     } catch (error) {
       console.error('Failed to save expense:', error);
@@ -79,6 +87,7 @@ export function Expenses() {
 
   const handleEdit = (expense: DailyExpense) => {
     setEditingExpense(expense);
+    setSelectedMoneyBoxId(expense.moneyBoxId ?? 0);
     setShowForm(true);
   };
 
@@ -180,6 +189,7 @@ export function Expenses() {
           </div>
           <Button className="w-full sm:w-auto bg-white text-red-600 hover:bg-red-50 font-semibold" onClick={() => {
             setEditingExpense(null);
+            setSelectedMoneyBoxId(0);
             setShowForm(!showForm);
           }}>
             <Plus className="h-4 w-4 mr-2" />
@@ -378,6 +388,20 @@ export function Expenses() {
                 defaultValue={editingExpense?.amount}
                 helperText="Enter the expense amount"
               />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box)</label>
+                <select
+                  value={selectedMoneyBoxId}
+                  onChange={e => setSelectedMoneyBoxId(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value={0}>-- Sans caisse --</option>
+                  {moneyBoxes.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.currentBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA)</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Le montant sera déduit du solde de la caisse sélectionnée</p>
+              </div>
               <Input
                 label="Payment Method"
                 type="text"
