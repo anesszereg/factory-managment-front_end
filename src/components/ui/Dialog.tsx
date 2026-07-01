@@ -39,8 +39,8 @@ export function DialogContent({ children, className = '' }: DialogContentProps) 
   
   return (
     <div className={`${baseClasses} ${sizeClasses} ${className}`}>
-      <div className="h-1.5 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 flex-shrink-0" />
-      <div className="overflow-y-auto p-5 sm:p-6">
+      <div className="h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 flex-shrink-0" />
+      <div className="overflow-y-auto p-4 sm:p-5">
         {children}
       </div>
     </div>
@@ -54,15 +54,15 @@ interface DialogHeaderProps {
 
 export function DialogHeader({ children, onClose }: DialogHeaderProps) {
   return (
-    <div className="flex items-start justify-between -mx-5 sm:-mx-6 -mt-5 sm:-mt-6 px-5 sm:px-6 py-4 sm:py-5 mb-5 sm:mb-6 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white">
+    <div className="flex items-start justify-between -mx-4 sm:-mx-5 -mt-4 sm:-mt-5 px-4 sm:px-5 py-3 sm:py-4 mb-4 sm:mb-5 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white">
       <div className="flex-1 pr-3">{children}</div>
       {onClose && (
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 rounded-lg transition-all p-1.5 flex-shrink-0 mt-0.5"
+          className="text-gray-400 hover:text-gray-700 hover:bg-gray-200/70 rounded-lg transition-all p-1 flex-shrink-0 mt-0.5"
           aria-label="Close"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
       )}
     </div>
@@ -95,7 +95,7 @@ export function DialogDescription({ children }: DialogDescriptionProps) {
 
 export function DialogFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 px-5 sm:px-6 py-4 sm:py-5 border-t border-gray-100 bg-gray-50/50">
+    <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 border-t border-gray-100 bg-gray-50/50">
       {children}
     </div>
   );
@@ -103,7 +103,7 @@ export function DialogFooter({ children }: { children: React.ReactNode }) {
 
 export function DialogBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`px-5 sm:px-6 py-5 sm:py-6 overflow-y-auto ${className}`}>
+    <div className={`px-4 sm:px-5 py-4 sm:py-5 overflow-y-auto ${className}`}>
       {children}
     </div>
   );

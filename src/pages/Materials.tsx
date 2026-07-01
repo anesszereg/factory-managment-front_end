@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi } from '@/services/api';
+import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi, ocrApi } from '@/services/api';
 import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker, Supplier } from '@/types';
 import { MaterialUnit } from '@/types';
-import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer, Calendar } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer, Calendar, Camera, Loader2 } from 'lucide-react';
 import { formatDate, getUnitLabel, formatCurrency } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
 
@@ -40,6 +40,10 @@ export function Materials() {
   const [pieceWorkers, setPieceWorkers] = useState<PieceWorker[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   
+  // Receipt scanning state
+  const [scanningReceipt, setScanningReceipt] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Multi-purchase state
   const [purchaseItems, setPurchaseItems] = useState<{
     materialId: number;
@@ -248,6 +252,82 @@ export function Materials() {
 
   const getPurchaseTotal = () => {
     return purchaseItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  };
+
+  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanningReceipt(true);
+    const loadingToast = toast.loading('Scanning receipt with PaddleOCR...');
+
+    try {
+      const response = await ocrApi.scanImage(file);
+      const text = response.data.text;
+
+      const parsedItems = parseReceiptText(text);
+      if (parsedItems.length > 0) {
+        setPurchaseItems(parsedItems);
+        toast.success(`Found ${parsedItems.length} item(s) on receipt`, { id: loadingToast });
+      } else {
+        toast.error('Could not read any purchase items from image', { id: loadingToast });
+      }
+    } catch (error) {
+      console.error('OCR failed:', error);
+      toast.error('Failed to scan receipt image', { id: loadingToast });
+    } finally {
+      setScanningReceipt(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const parseReceiptText = (text: string) => {
+    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+    const parsed: { materialId: number; supplierId: number; quantity: number; unitPrice: number }[] = [];
+
+    for (const line of lines) {
+      const lower = line.toLowerCase();
+      // Find material in the line
+      const matchedMaterial = materials.find((m) =>
+        lower.includes(m.name.toLowerCase()) ||
+        lower.includes(m.name.toLowerCase().replace(/\s+/g, ''))
+      );
+      if (!matchedMaterial) continue;
+
+      // Extract numbers from the line
+      const numbers = [...line.matchAll(/\d+[.,]?\d*/g)].map((m) =>
+        parseFloat(m[0].replace(',', '.'))
+      );
+      if (numbers.length < 2) continue;
+
+      // Try to find supplier
+      const matchedSupplier = suppliers.find((s) =>
+        lower.includes(s.name.toLowerCase())
+      );
+
+      // Heuristic: quantity is usually the smaller number, unit price is the next
+      // Total price is often the largest. We'll derive unitPrice = total / quantity.
+      const sorted = [...numbers].sort((a, b) => a - b);
+      const quantity = sorted[0];
+      let unitPrice = sorted[1];
+      const lastPrice = getLastUnitPrice(matchedMaterial.id);
+      if (lastPrice > 0 && Math.abs(unitPrice - lastPrice) > lastPrice * 0.5) {
+        // The second number might be total; derive unit price from it
+        unitPrice = parseFloat((unitPrice / quantity).toFixed(2));
+      }
+      if (unitPrice <= 0) continue;
+
+      parsed.push({
+        materialId: matchedMaterial.id,
+        supplierId: matchedSupplier?.id || 0,
+        quantity,
+        unitPrice,
+      });
+    }
+
+    return parsed;
   };
 
   const handleDeletePurchase = async (id: number) => {
@@ -1293,6 +1373,50 @@ export function Materials() {
                 onChange={(e) => setPurchaseDate(e.target.value)}
                 helperText="Date for all purchases"
               />
+
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Scan Receipt</p>
+                      <p className="text-xs text-gray-500">Upload an image to auto-fill items</p>
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      onChange={handleReceiptImageUpload}
+                      className="hidden"
+                      id="receipt-scan"
+                    />
+                    <label htmlFor="receipt-scan">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={scanningReceipt}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="cursor-pointer"
+                      >
+                        {scanningReceipt ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Scanning
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="h-4 w-4 mr-2" />
+                            Scan
+                          </>
+                        )}
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+              </div>
               
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between items-center mb-3">
