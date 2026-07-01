@@ -14,6 +14,10 @@ const Employees = React.lazy(() => import('./pages/Employees'));
 const SalaryAllowances = React.lazy(() => import('./pages/SalaryAllowances'));
 const PieceWorkers = React.lazy(() => import('./pages/PieceWorkers'));
 const Suppliers = React.lazy(() => import('./pages/Suppliers'));
+const MoneyBox = React.lazy(() => import('./pages/MoneyBox'));
+const Clients = React.lazy(() => import('./pages/Clients'));
+const Sales = React.lazy(() => import('./pages/Sales'));
+const WarehousePage = React.lazy(() => import('./pages/Warehouse'));
 
 function App() {
   return (
@@ -55,6 +59,10 @@ function App() {
             <Route path="/salary-allowances" element={<SalaryAllowances />} />
             <Route path="/piece-workers" element={<PieceWorkers />} />
             <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/money-box" element={<MoneyBox />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/warehouse" element={<WarehousePage />} />
           </Routes>
         </Suspense>
       </Layout>

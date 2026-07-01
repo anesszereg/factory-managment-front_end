@@ -14,7 +14,11 @@ import {
   Hammer,
   ChevronLeft,
   ChevronRight,
-  Truck
+  Truck,
+  Banknote,
+  ShoppingCart,
+  UserSquare,
+  Warehouse
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,16 +40,20 @@ export function Layout({ children }: LayoutProps) {
   }, [location.pathname]);
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Production', href: '/production', icon: Factory },
-    { name: 'Raw Materials', href: '/materials', icon: Boxes },
-    { name: 'Suppliers', href: '/suppliers', icon: Truck },
-    { name: 'Expenses', href: '/expenses', icon: DollarSign },
-    { name: 'Incomes', href: '/incomes', icon: TrendingUp },
-    { name: 'Models', href: '/models', icon: Package },
-    { name: 'Employees', href: '/employees', icon: Users },
-    { name: 'Piece Workers', href: '/piece-workers', icon: Hammer },
-    { name: 'Salary Allowances', href: '/salary-allowances', icon: Wallet },
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard, section: '' },
+    { name: 'Production', href: '/production', icon: Factory, section: 'Production' },
+    { name: 'Modèles', href: '/models', icon: Package, section: 'Production' },
+    { name: 'Matières Premières', href: '/materials', icon: Boxes, section: 'Production' },
+    { name: 'Fournisseurs', href: '/suppliers', icon: Truck, section: 'Achats' },
+    { name: 'Entrepôts & Stock', href: '/warehouse', icon: Warehouse, section: 'Achats' },
+    { name: 'Clients', href: '/clients', icon: UserSquare, section: 'Ventes' },
+    { name: 'Ventes', href: '/sales', icon: ShoppingCart, section: 'Ventes' },
+    { name: 'Caisse', href: '/money-box', icon: Banknote, section: 'Finance' },
+    { name: 'Dépenses', href: '/expenses', icon: DollarSign, section: 'Finance' },
+    { name: 'Revenus', href: '/incomes', icon: TrendingUp, section: 'Finance' },
+    { name: 'Employés', href: '/employees', icon: Users, section: 'RH' },
+    { name: 'Façonniers', href: '/piece-workers', icon: Hammer, section: 'RH' },
+    { name: 'Avances Salaires', href: '/salary-allowances', icon: Wallet, section: 'RH' },
   ];
 
   return (
@@ -90,16 +98,22 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-1 px-3">
+          <ul className="space-y-0.5 px-3">
             {navigation.map((item, index) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
+              const prevItem = navigation[index - 1];
+              const showSection = item.section && (!prevItem || prevItem.section !== item.section);
               return (
                 <li 
                   key={item.name}
                   className="animate-fadeIn"
                   style={{ animationDelay: `${index * 0.03}s` }}
                 >
+                  {showSection && !sidebarCollapsed && (
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 pt-4 pb-1">{item.section}</p>
+                  )}
+                  {showSection && sidebarCollapsed && <div className="border-t border-gray-100 my-2" />}
                   <Link
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
