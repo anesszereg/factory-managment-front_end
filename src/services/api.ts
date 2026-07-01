@@ -24,7 +24,17 @@ import type {
   SupplierOrder,
   SupplierOrderStatus,
   SupplierPayment,
-  SupplierSummary
+  SupplierSummary,
+  MoneyBox,
+  FinancialTransaction,
+  DailyCashSummary,
+  Client,
+  ClientTransaction,
+  SalesOrder,
+  Warehouse,
+  FinishedProductInventory,
+  SupplierTransaction,
+  SupplierFinancialSummary,
 } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || '/api';
@@ -400,6 +410,77 @@ export const ocrApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+export const moneyBoxApi = {
+  getAll: () => api.get<MoneyBox[]>('/money-boxes'),
+  getById: (id: number) => api.get<MoneyBox>(`/money-boxes/${id}`),
+  create: (data: { name: string; description?: string; currentBalance?: number; responsibleUser?: string }) =>
+    api.post<MoneyBox>('/money-boxes', data),
+  update: (id: number, data: Partial<MoneyBox>) => api.put<MoneyBox>(`/money-boxes/${id}`, data),
+  delete: (id: number) => api.delete(`/money-boxes/${id}`),
+  transfer: (data: { fromId: number; toId: number; amount: number; description?: string }) =>
+    api.post('/money-boxes/transfer', data),
+};
+
+export const financialTransactionApi = {
+  getAll: (params?: { moneyBoxId?: number; type?: string; category?: string; startDate?: string; endDate?: string }) =>
+    api.get<FinancialTransaction[]>('/financial-transactions', { params }),
+  getById: (id: number) => api.get<FinancialTransaction>(`/financial-transactions/${id}`),
+  create: (data: { moneyBoxId: number; date: string; amount: number; type: string; category: string; description?: string; reference?: string }) =>
+    api.post<FinancialTransaction>('/financial-transactions', data),
+  getDailySummary: (date?: string) => api.get<DailyCashSummary>('/financial-transactions/daily-summary', { params: { date } }),
+  getMonthlyReport: (year: number, month: number) =>
+    api.get<FinancialTransaction[]>('/financial-transactions/monthly-report', { params: { year, month } }),
+};
+
+export const clientApi = {
+  getAll: (params?: { status?: string }) => api.get<Client[]>('/clients', { params }),
+  getById: (id: number) => api.get<Client>(`/clients/${id}`),
+  create: (data: { firstName: string; lastName: string; company?: string; phone?: string; email?: string; address?: string; creditLimit?: number; notes?: string; openingBalance?: number }) =>
+    api.post<Client>('/clients', data),
+  update: (id: number, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data),
+  delete: (id: number) => api.delete(`/clients/${id}`),
+  getLedger: (id: number) => api.get<ClientTransaction[]>(`/clients/${id}/ledger`),
+  recordPayment: (id: number, data: { moneyBoxId: number; orderId?: number; date: string; amount: number; paymentMethod: string; reference?: string; notes?: string }) =>
+    api.post(`/clients/${id}/payments`, data),
+};
+
+export const salesApi = {
+  getAll: (params?: { clientId?: number; status?: string }) => api.get<SalesOrder[]>('/sales', { params }),
+  getById: (id: number) => api.get<SalesOrder>(`/sales/${id}`),
+  create: (data: { clientId: number; salesperson?: string; orderDate: string; discount?: number; tax?: number; notes?: string; items: { productId: number; quantity: number; unitPrice: number; discount?: number }[] }) =>
+    api.post<SalesOrder>('/sales', data),
+  confirm: (id: number) => api.post<SalesOrder>(`/sales/${id}/confirm`, {}),
+  update: (id: number, data: { status?: string; notes?: string; salesperson?: string }) =>
+    api.put<SalesOrder>(`/sales/${id}`, data),
+  delete: (id: number) => api.delete(`/sales/${id}`),
+  recordPayment: (id: number, data: { moneyBoxId: number; date: string; amount: number; paymentMethod: string; reference?: string; notes?: string }) =>
+    api.post(`/sales/${id}/payments`, data),
+};
+
+export const warehouseApi = {
+  getAll: () => api.get<Warehouse[]>('/warehouses'),
+  getById: (id: number) => api.get<Warehouse>(`/warehouses/${id}`),
+  create: (data: { name: string; code?: string; address?: string; description?: string }) =>
+    api.post<Warehouse>('/warehouses', data),
+  update: (id: number, data: Partial<Warehouse>) => api.put<Warehouse>(`/warehouses/${id}`, data),
+  delete: (id: number) => api.delete(`/warehouses/${id}`),
+  getAllInventory: (warehouseId?: number) => api.get<FinishedProductInventory[]>('/warehouses/inventory', { params: { warehouseId } }),
+  getInventoryById: (id: number) => api.get<FinishedProductInventory>(`/warehouses/inventory/${id}`),
+  addInventory: (data: { modelId: number; warehouseId: number; sku: string; quantity: number; productionCost?: number; batchNumber?: string; productionDate?: string }) =>
+    api.post<FinishedProductInventory>('/warehouses/inventory', data),
+  adjustInventory: (id: number, quantity: number, notes?: string) =>
+    api.patch<FinishedProductInventory>(`/warehouses/inventory/${id}/adjust`, { quantity, notes }),
+  transfer: (data: { productId: number; fromWarehouseId: number; toWarehouseId: number; quantity: number; notes?: string }) =>
+    api.post('/warehouses/inventory/transfer', data),
+};
+
+export const supplierLedgerApi = {
+  getLedger: (supplierId: number) => api.get<SupplierTransaction[]>(`/supplier-ledger/${supplierId}/ledger`),
+  getSummary: (supplierId: number) => api.get<SupplierFinancialSummary>(`/supplier-ledger/${supplierId}/summary`),
+  recordPayment: (supplierId: number, data: { moneyBoxId: number; orderId?: number; date: string; amount: number; paymentMethod?: string; reference?: string; notes?: string }) =>
+    api.post(`/supplier-ledger/${supplierId}/payments`, data),
 };
 
 export default api;
