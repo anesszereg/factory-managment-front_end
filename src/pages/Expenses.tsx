@@ -77,6 +77,7 @@ export function Expenses() {
         toast.success('Expense created successfully!', { id: loadingToast });
       }
       setShowForm(false);
+      setSelectedMoneyBoxId(0);
       loadData();
     } catch (error) {
       console.error('Failed to save expense:', error);
@@ -188,6 +189,7 @@ export function Expenses() {
           </div>
           <Button className="w-full sm:w-auto bg-white text-red-600 hover:bg-red-50 font-semibold" onClick={() => {
             setEditingExpense(null);
+            setSelectedMoneyBoxId(0);
             setShowForm(!showForm);
           }}>
             <Plus className="h-4 w-4 mr-2" />
