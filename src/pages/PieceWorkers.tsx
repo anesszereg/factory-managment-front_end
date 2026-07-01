@@ -77,6 +77,8 @@ export default function PieceWorkers() {
     paidReceipts: { id: number; amount: number }[];
   } | null>(null);
   const [showPaymentReceipt, setShowPaymentReceipt] = useState(false);
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [paymentHistoryWorker, setPaymentHistoryWorker] = useState<PieceWorker | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -317,141 +319,41 @@ export default function PieceWorkers() {
   // Print worker payment receipt
   const printWorkerPaymentReceipt = () => {
     if (!lastWorkerPayment) return;
-    
     const { worker, amount, date, previousBalance, newBalance, paidReceipts } = lastWorkerPayment;
-    
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Payment Receipt - ${worker.firstName} ${worker.lastName}</title>
-            <style>
-              @page { size: A4; margin: 0; }
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { 
-                font-family: 'Courier New', monospace; 
-                font-size: 11px;
-                display: flex;
-                justify-content: flex-end;
-                align-items: flex-start;
-              }
-              .receipt-container {
-                width: 80mm;
-                padding: 5mm;
-                line-height: 1.4;
-                border: 2px solid #000;
-                margin: 5mm;
-              }
-              .title {
-                text-align: center;
-                font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 3mm;
-                border-bottom: 2px solid #000;
-                padding-bottom: 2mm;
-              }
-              .info-row {
-                display: flex;
-                justify-content: space-between;
-                margin: 1.5mm 0;
-              }
-              .section {
-                margin: 3mm 0;
-                padding: 2mm 0;
-                border-top: 1px dashed #000;
-              }
-              .amount-box {
-                background: #f0f0f0;
-                padding: 3mm;
-                text-align: center;
-                margin: 3mm 0;
-                border: 1px solid #000;
-              }
-              .amount-value {
-                font-size: 16px;
-                font-weight: bold;
-              }
-              .balance-row {
-                display: flex;
-                justify-content: space-between;
-                padding: 1mm 0;
-              }
-              .balance-row.highlight {
-                font-weight: bold;
-                font-size: 12px;
-              }
-              .footer {
-                text-align: center;
-                font-size: 9px;
-                margin-top: 4mm;
-                padding-top: 2mm;
-                border-top: 1px dashed #000;
-                color: #666;
-              }
-              @media print { 
-                body { 
-                  display: flex;
-                  justify-content: flex-end;
-                  align-items: flex-start;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="receipt-container">
-              <div class="title">REÇU DE PAIEMENT</div>
-              
-              <div class="info-row">
-                <span>Date:</span>
-                <span>${format(date, 'dd/MM/yyyy HH:mm')}</span>
-              </div>
-              <div class="info-row">
-                <span>Travailleur:</span>
-                <span>${worker.firstName} ${worker.lastName}</span>
-              </div>
-              
-              <div class="amount-box">
-                <div>Montant Payé</div>
-                <div class="amount-value">${formatCurrency(amount)}</div>
-              </div>
-              
-              <div class="section">
-                <div class="balance-row">
-                  <span>Solde Précédent:</span>
-                  <span>${formatCurrency(previousBalance)}</span>
-                </div>
-                <div class="balance-row">
-                  <span>Paiement:</span>
-                  <span>- ${formatCurrency(amount)}</span>
-                </div>
-                <div class="balance-row highlight">
-                  <span>Nouveau Solde:</span>
-                  <span>${formatCurrency(newBalance)}</span>
-                </div>
-              </div>
-              
-              <div class="section">
-                <div style="font-weight: bold; margin-bottom: 2mm;">Bons Payés (${paidReceipts.length}):</div>
-                ${paidReceipts.map(pr => `
-                  <div class="info-row" style="font-size: 9px;">
-                    <span>Bon #${pr.id}</span>
-                    <span>${formatCurrency(pr.amount)}</span>
-                  </div>
-                `).join('')}
-              </div>
-              
-              <div class="footer">
-                <p>Merci pour votre travail</p>
-                <p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
-              </div>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>Reçu - ${worker.firstName} ${worker.lastName}</title>
+      <style>
+        @page { size: 100mm 100mm; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.4; }
+        .title { text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+        .row { display: flex; justify-content: space-between; padding: 1mm 0; border-bottom: 1px dotted #ccc; }
+        .section { margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #000; }
+        .section-title { font-weight: bold; font-size: 9px; margin-bottom: 1mm; }
+        .amount-box { text-align: center; border: 1px solid #000; padding: 2mm; margin: 2mm 0; }
+        .amount-val { font-size: 14px; font-weight: bold; }
+        .highlight { font-weight: bold; }
+        .footer { text-align: center; font-size: 8px; color: #666; margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #000; }
+      </style></head><body>
+        <div class="title">REÇU DE PAIEMENT</div>
+        <div class="row"><span>Date:</span><span>${format(date, 'dd/MM/yyyy HH:mm')}</span></div>
+        <div class="row"><span>Travailleur:</span><span>${worker.firstName} ${worker.lastName}</span></div>
+        <div class="amount-box"><div style="font-size:9px">Montant Payé</div><div class="amount-val">${formatCurrency(amount)}</div></div>
+        <div class="section">
+          <div class="row"><span>Solde précédent:</span><span>${formatCurrency(previousBalance)}</span></div>
+          <div class="row"><span>Paiement:</span><span>- ${formatCurrency(amount)}</span></div>
+          <div class="row highlight"><span>Nouveau solde:</span><span>${formatCurrency(newBalance)}</span></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Bons couverts (${paidReceipts.length}):</div>
+          ${paidReceipts.map(pr => `<div class="row" style="font-size:9px"><span>Bon #${pr.id}</span><span>${formatCurrency(pr.amount)}</span></div>`).join('')}
+        </div>
+        <div class="footer"><p>Merci pour votre travail</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const printWorker = (worker: PieceWorker) => {
@@ -558,6 +460,59 @@ export default function PieceWorkers() {
       printWindow.document.close();
       printWindow.print();
     }
+  };
+
+  const printPaymentHistory = (worker: PieceWorker) => {
+    const workerReceipts = receipts
+      .filter(r => r.pieceWorkerId === worker.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const totalAmount = workerReceipts.reduce((s, r) => s + r.totalAmount, 0);
+    const totalPaid = workerReceipts.reduce((s, r) => s + r.paidAmount, 0);
+    const totalRemaining = totalAmount - totalPaid;
+    const rowsHtml = workerReceipts.map(r => `
+      <tr>
+        <td>${format(new Date(r.date), 'dd/MM/yy')}</td>
+        <td class="r">${formatCurrency(r.totalAmount)}</td>
+        <td class="r">${formatCurrency(r.paidAmount)}</td>
+        <td class="r">${formatCurrency(r.totalAmount - r.paidAmount)}</td>
+        <td class="c" style="font-size:7px">${r.paymentStatus === PaymentStatus.PAID ? 'OK' : r.paymentStatus === PaymentStatus.PART_PAID ? 'PART' : '-'}</td>
+      </tr>`).join('');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>Historique - ${worker.firstName} ${worker.lastName}</title>
+      <style>
+        @page { size: 100mm 100mm; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; font-size: 9px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.3; }
+        .title { text-align: center; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+        .sub { text-align: center; font-size: 9px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 8px; }
+        th { border-bottom: 1px solid #000; padding: 0.5mm 0; text-align: left; font-size: 7px; }
+        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; }
+        td.r { text-align: right; } td.c { text-align: center; } th.r { text-align: right; } th.c { text-align: center; }
+        .totals { margin-top: 2mm; padding-top: 1mm; border-top: 1px solid #000; }
+        .row { display: flex; justify-content: space-between; padding: 0.4mm 0; }
+        .bold { font-weight: bold; }
+        .red { color: #c00; font-weight: bold; }
+        .footer { text-align: center; font-size: 7px; color: #666; margin-top: 2mm; padding-top: 1mm; border-top: 1px dashed #000; }
+      </style></head><body>
+        <div class="title">HISTORIQUE PAIEMENTS</div>
+        <div class="sub">${worker.firstName} ${worker.lastName}</div>
+        <div class="sub">Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
+        <table style="margin-top:2mm">
+          <thead><tr><th>Date</th><th class="r">Total</th><th class="r">Payé</th><th class="r">Reste</th><th class="c">St.</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="totals">
+          <div class="row bold"><span>Total bons:</span><span>${formatCurrency(totalAmount)}</span></div>
+          <div class="row"><span>Total payé:</span><span>${formatCurrency(totalPaid)}</span></div>
+          <div class="row red"><span>Reste dû:</span><span>${formatCurrency(totalRemaining)}</span></div>
+        </div>
+        <div class="footer"><p>${workerReceipts.length} bons · Merci pour votre travail</p></div>
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const exportWorkerSummaryToExcel = () => {
@@ -771,181 +726,54 @@ export default function PieceWorkers() {
 
   const printReceipt = (receipt: DailyPieceReceipt) => {
     const worker = workers.find(w => w.id === receipt.pieceWorkerId);
+    const remaining = receipt.totalAmount - receipt.paidAmount;
     const itemsHtml = receipt.items?.map(item => `
       <tr>
         <td>${item.itemName}</td>
-        <td class="center">${item.quantity}</td>
-        <td class="right">${formatCurrency(item.pricePerPiece)}</td>
-        <td class="right">${formatCurrency(item.totalPrice)}</td>
+        <td class="c">${item.quantity}</td>
+        <td class="r">${formatCurrency(item.pricePerPiece)}</td>
+        <td class="r">${formatCurrency(item.totalPrice)}</td>
       </tr>
     `).join('') || '';
-    
-    const subTotal = receipt.totalAmount;
-    const remaining = receipt.totalAmount - receipt.paidAmount;
-    
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Bon #${receipt.id}</title>
-            <style>
-              @page { size: A4; margin: 0; }
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { 
-                font-family: 'Courier New', monospace; 
-                font-size: 10px;
-                display: flex;
-                justify-content: flex-end;
-                align-items: flex-start;
-              }
-              .receipt-container {
-                width: 80mm;
-                padding: 4mm;
-                line-height: 1.3;
-                border: 2px solid #000;
-                margin: 5mm;
-              }
-              .title {
-                text-align: center;
-                font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 2mm;
-              }
-              .info-center {
-                text-align: center;
-                font-size: 9px;
-                margin-bottom: 1mm;
-              }
-              .separator {
-                border-bottom: 1px dashed #000;
-                margin: 2mm 0;
-              }
-              .ref-section {
-                font-size: 9px;
-                margin-bottom: 2mm;
-              }
-              .ref-row {
-                display: flex;
-                justify-content: space-between;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 9px;
-                margin-bottom: 2mm;
-              }
-              th {
-                text-align: left;
-                border-bottom: 1px solid #000;
-                padding: 1mm 0;
-                font-size: 9px;
-              }
-              th.center, td.center { text-align: center; }
-              th.right, td.right { text-align: right; }
-              td {
-                padding: 1mm 0;
-                border-bottom: 1px dotted #ccc;
-              }
-              .totals {
-                font-size: 10px;
-                margin-top: 2mm;
-              }
-              .totals-row {
-                display: flex;
-                justify-content: space-between;
-                padding: 0.5mm 0;
-              }
-              .totals-row.bold {
-                font-weight: bold;
-              }
-              .totals-row.total-line {
-                font-size: 12px;
-                font-weight: bold;
-                border-top: 1px solid #000;
-                padding-top: 1mm;
-                margin-top: 1mm;
-              }
-              .totals-row.remaining {
-                color: #c00;
-                font-weight: bold;
-              }
-              .footer {
-                text-align: center;
-                font-size: 8px;
-                margin-top: 3mm;
-                color: #666;
-              }
-              @media print { 
-                body { 
-                  display: flex;
-                  justify-content: flex-end;
-                  align-items: flex-start;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="receipt-container">
-            <div class="title">BON DE TRAVAIL</div>
-            <div class="info-center">Travailleur: ${worker?.firstName} ${worker?.lastName}</div>
-            <div class="info-center">Date: ${format(new Date(receipt.date), 'dd/MM/yyyy HH:mm')}</div>
-            
-            <div class="separator"></div>
-            
-            <div class="ref-section">
-              <div class="ref-row">
-                <span>Référence: ${receipt.id}</span>
-                <span>Statut: ${getPaymentStatusLabel(receipt.paymentStatus)}</span>
-              </div>
-            </div>
-            
-            <table>
-              <thead>
-                <tr>
-                  <th>Désignation</th>
-                  <th class="center">Qté</th>
-                  <th class="right">P.U</th>
-                  <th class="right">Montant</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-            </table>
-            
-            <div class="totals">
-              <div class="totals-row">
-                <span>Sous-total:</span>
-                <span>${formatCurrency(subTotal)}</span>
-              </div>
-              <div class="totals-row total-line">
-                <span>TOTAL:</span>
-                <span>${formatCurrency(receipt.totalAmount)}</span>
-              </div>
-              <div class="totals-row">
-                <span>Payé:</span>
-                <span>${formatCurrency(receipt.paidAmount)}</span>
-              </div>
-              <div class="totals-row remaining">
-                <span>Reste à payer:</span>
-                <span>${formatCurrency(remaining)}</span>
-              </div>
-            </div>
-            
-            ${receipt.notes ? `<div style="font-size: 8px; margin-top: 2mm; color: #666;">Note: ${receipt.notes}</div>` : ''}
-            
-            <div class="footer">
-              <p>Merci pour votre confiance</p>
-              <p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
-            </div>
-            </div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>Bon #${receipt.id}</title>
+      <style>
+        @page { size: 100mm 100mm; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.35; }
+        .title { text-align: center; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        .center { text-align: center; font-size: 9px; }
+        .sep { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
+        .ref { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 9px; margin: 1mm 0; }
+        th { border-bottom: 1px solid #000; padding: 0.5mm 0; font-size: 8px; text-align: left; }
+        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; }
+        td.c { text-align: center; } td.r { text-align: right; } th.c { text-align: center; } th.r { text-align: right; }
+        .row { display: flex; justify-content: space-between; padding: 0.5mm 0; }
+        .row.total { font-size: 11px; font-weight: bold; border-top: 1px solid #000; padding-top: 1mm; margin-top: 0.5mm; }
+        .row.red { color: #c00; font-weight: bold; }
+        .footer { text-align: center; font-size: 8px; color: #666; margin-top: 2mm; padding-top: 1.5mm; border-top: 1px dashed #000; }
+      </style></head><body>
+        <div class="title">BON DE TRAVAIL</div>
+        <div class="center">${worker?.firstName} ${worker?.lastName}</div>
+        <div class="center">${format(new Date(receipt.date), 'dd/MM/yyyy')}</div>
+        <div class="sep"></div>
+        <div class="ref"><span>Réf: #${receipt.id}</span><span>${receipt.paymentStatus}</span></div>
+        <table>
+          <thead><tr><th>Désignation</th><th class="c">Qté</th><th class="r">P.U</th><th class="r">Total</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div class="sep"></div>
+        <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
+        <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
+        <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
+        ${receipt.notes ? `<div style="font-size:8px;margin-top:1mm;color:#555">Note: ${receipt.notes}</div>` : ''}
+        <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const getStatusBadgeClass = (status: PieceWorkerStatus) => {
@@ -1232,6 +1060,18 @@ export default function PieceWorkers() {
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         Summary
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPaymentHistoryWorker(worker);
+                          setShowPaymentHistory(true);
+                        }}
+                        className="flex-1 bg-amber-50 text-amber-700 hover:bg-amber-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
+                        title="Payment History"
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Histo.
                       </button>
                       <button
                         onClick={(e) => {
@@ -2085,6 +1925,114 @@ export default function PieceWorkers() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment History Dialog */}
+      <Dialog open={showPaymentHistory} onOpenChange={setShowPaymentHistory}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader onClose={() => setShowPaymentHistory(false)}>
+            <DialogTitle>
+              Historique des paiements — {paymentHistoryWorker?.firstName} {paymentHistoryWorker?.lastName}
+            </DialogTitle>
+          </DialogHeader>
+          {paymentHistoryWorker && (() => {
+            const workerReceipts = receipts
+              .filter(r => r.pieceWorkerId === paymentHistoryWorker.id)
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const totalAmount = workerReceipts.reduce((s, r) => s + r.totalAmount, 0);
+            const totalPaid = workerReceipts.reduce((s, r) => s + r.paidAmount, 0);
+            const totalRemaining = totalAmount - totalPaid;
+            return (
+              <div className="space-y-4">
+                {/* KPI bar */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-green-600 font-medium">Total Gagné</p>
+                    <p className="text-base font-bold text-green-700">{formatCurrency(totalAmount)}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-blue-600 font-medium">Total Payé</p>
+                    <p className="text-base font-bold text-blue-700">{formatCurrency(totalPaid)}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-red-600 font-medium">Reste Dû</p>
+                    <p className="text-base font-bold text-red-700">{formatCurrency(totalRemaining)}</p>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-y-auto max-h-80 rounded-xl border border-gray-200">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Articles</th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Payé</th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Reste</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Bon</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {workerReceipts.map((r) => (
+                        <tr key={r.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-700">
+                            {format(new Date(r.date), 'dd/MM/yyyy')}
+                          </td>
+                          <td className="px-3 py-2 text-gray-600 max-w-[180px]">
+                            {r.items?.map((item, i) => (
+                              <div key={i} className="text-xs">{item.itemName} × {item.quantity}</div>
+                            ))}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(r.totalAmount)}</td>
+                          <td className="px-3 py-2 text-right text-green-700">{formatCurrency(r.paidAmount)}</td>
+                          <td className={`px-3 py-2 text-right font-semibold ${r.totalAmount - r.paidAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                            {formatCurrency(r.totalAmount - r.paidAmount)}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${getPaymentStatusBadge(r.paymentStatus)}`}>
+                              {getPaymentStatusLabel(r.paymentStatus)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => printReceipt(r)}
+                              className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                              title="Imprimer bon"
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {workerReceipts.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-3 py-8 text-center text-gray-400 text-sm">
+                            Aucun bon trouvé pour ce travailleur
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button variant="outline" onClick={() => setShowPaymentHistory(false)} className="flex-1">
+                    Fermer
+                  </Button>
+                  <Button
+                    onClick={() => printPaymentHistory(paymentHistoryWorker)}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimer Historique
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

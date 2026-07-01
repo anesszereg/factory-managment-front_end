@@ -30,11 +30,11 @@ export function printDocument(options: PrintOptions) {
     .join('');
 
   const footer = options.footer
-    ? `<div class="footer"><p>${options.footer}</p></div>`
+    ? `<div class="footer-msg"><p>${options.footer}</p></div>`
     : '';
 
   const timestamp = options.showTimestamp !== false
-    ? `<p class="timestamp">Printed on ${new Date().toLocaleString()}</p>`
+    ? `<p class="timestamp">Imprimé le: ${new Date().toLocaleString('fr-DZ')}</p>`
     : '';
 
   printWindow.document.write(`
@@ -42,70 +42,75 @@ export function printDocument(options: PrintOptions) {
       <head>
         <title>${options.title}</title>
         <style>
-          * { box-sizing: border-box; }
+          @page {
+            size: 100mm 100mm;
+            margin: 0;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            padding: 24px;
-            max-width: 600px;
-            margin: 0 auto;
-            color: #1f2937;
-            line-height: 1.5;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 10px;
+            width: 100mm;
+            min-height: 100mm;
+            padding: 4mm;
+            color: #000;
+            line-height: 1.4;
           }
           .header {
             text-align: center;
-            border-bottom: 2px solid #111827;
-            padding-bottom: 16px;
-            margin-bottom: 24px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 2mm;
+            margin-bottom: 3mm;
           }
           .title {
-            font-size: 24px;
+            font-size: 13px;
             font-weight: 700;
-            margin: 0;
-            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: 1px;
           }
           .subtitle {
-            font-size: 14px;
-            color: #6b7280;
-            margin: 4px 0 0;
+            font-size: 9px;
+            color: #555;
+            margin-top: 1mm;
           }
           .row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 1.2mm 0;
+            border-bottom: 1px dotted #ccc;
           }
           .label {
             font-weight: 600;
-            color: #374151;
+            color: #333;
           }
           .value {
-            color: #111827;
+            color: #000;
             text-align: right;
-            max-width: 60%;
+            max-width: 55%;
           }
-          .footer {
-            margin-top: 32px;
+          .footer-msg {
+            margin-top: 3mm;
             text-align: center;
-            font-size: 12px;
-            color: #6b7280;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 16px;
+            font-size: 9px;
+            color: #555;
+            border-top: 1px dashed #000;
+            padding-top: 2mm;
           }
           .timestamp {
             text-align: center;
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 24px;
+            font-size: 8px;
+            color: #888;
+            margin-top: 2mm;
           }
           @media print {
-            body { padding: 16px; }
+            body { padding: 4mm; }
           }
         </style>
       </head>
       <body>
         <div class="header">
-          <p class="title">${options.title}</p>
-          ${options.subtitle ? `<p class="subtitle">${options.subtitle}</p>` : ''}
+          <div class="title">${options.title}</div>
+          ${options.subtitle ? `<div class="subtitle">${options.subtitle}</div>` : ''}
         </div>
         ${rows}
         ${footer}
