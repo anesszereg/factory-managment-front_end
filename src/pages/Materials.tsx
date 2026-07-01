@@ -97,6 +97,7 @@ export function Materials() {
           unit: formData.get('unit') as MaterialUnit,
           currentStock: parseFloat(formData.get('currentStock') as string) || 0,
           minStockAlert: parseFloat(formData.get('minStockAlert') as string) || 0,
+          purchasePrice: parseFloat(formData.get('purchasePrice') as string) || 0,
         });
         toast.success('Material updated successfully!', { id: loadingToast });
         setEditingMaterial(null);
@@ -106,6 +107,7 @@ export function Materials() {
           unit: formData.get('unit') as MaterialUnit,
           currentStock: parseFloat(formData.get('currentStock') as string) || 0,
           minStockAlert: parseFloat(formData.get('minStockAlert') as string) || 0,
+          purchasePrice: parseFloat(formData.get('purchasePrice') as string) || 0,
         });
         toast.success('Material created successfully!', { id: loadingToast });
       }
@@ -1271,6 +1273,16 @@ export function Materials() {
                 helperText="Alert threshold"
               />
             </div>
+            <Input
+              label="Purchase Price"
+              type="number"
+              name="purchasePrice"
+              step="0.01"
+              min="0"
+              defaultValue={editingMaterial?.purchasePrice || 0}
+              placeholder="0.00"
+              helperText="Default purchase price per unit (DZD)"
+            />
             <div className="flex justify-end space-x-3">
               <Button type="button" variant="outline" onClick={() => {
                 setShowMaterialForm(false);

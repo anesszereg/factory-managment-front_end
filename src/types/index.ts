@@ -86,6 +86,7 @@ export interface RawMaterial {
   unit: MaterialUnit;
   currentStock: number;
   minStockAlert: number;
+  purchasePrice: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -107,12 +107,14 @@ export const rawMaterialsApi = {
     unit: MaterialUnit;
     currentStock?: number;
     minStockAlert?: number;
+    purchasePrice?: number;
   }) => api.post<RawMaterial>('/raw-materials', data),
   update: (id: number, data: {
     name?: string;
     unit?: MaterialUnit;
     currentStock?: number;
     minStockAlert?: number;
+    purchasePrice?: number;
   }) => api.put<RawMaterial>(`/raw-materials/${id}`, data),
   delete: (id: number) => api.delete(`/raw-materials/${id}`),
   getLowStock: () => api.get<RawMaterial[]>('/raw-materials/low-stock'),
