@@ -1,14 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { createWorker } from 'tesseract.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi } from '@/services/api';
+import { rawMaterialsApi, materialPurchasesApi, materialConsumptionApi, employeesApi, pieceWorkersApi, suppliersApi, ocrApi } from '@/services/api';
 import type { RawMaterial, MaterialPurchase, MaterialConsumption, Employee, PieceWorker, Supplier } from '@/types';
 import { MaterialUnit } from '@/types';
 import { Plus, AlertTriangle, TrendingUp, TrendingDown, Package2, ShoppingCart, Minus, Edit2, Trash2, Download, Printer, Calendar, Camera, Loader2 } from 'lucide-react';
@@ -43,7 +42,6 @@ export function Materials() {
   
   // Receipt scanning state
   const [scanningReceipt, setScanningReceipt] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Multi-purchase state
@@ -261,22 +259,11 @@ export function Materials() {
     if (!file) return;
 
     setScanningReceipt(true);
-    setScanProgress(0);
-    const loadingToast = toast.loading('Scanning receipt...');
+    const loadingToast = toast.loading('Scanning receipt with PaddleOCR...');
 
     try {
-      const dataUrl = await readFileAsDataURL(file);
-      const worker = await createWorker('eng', 1, {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setScanProgress(Math.round(m.progress * 100));
-          }
-        },
-      });
-      const {
-        data: { text },
-      } = await worker.recognize(dataUrl);
-      await worker.terminate();
+      const response = await ocrApi.scanImage(file);
+      const text = response.data.text;
 
       const parsedItems = parseReceiptText(text);
       if (parsedItems.length > 0) {
@@ -290,20 +277,10 @@ export function Materials() {
       toast.error('Failed to scan receipt image', { id: loadingToast });
     } finally {
       setScanningReceipt(false);
-      setScanProgress(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
-  };
-
-  const readFileAsDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   };
 
   const parseReceiptText = (text: string) => {
@@ -1427,7 +1404,7 @@ export function Materials() {
                         {scanningReceipt ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            {scanProgress > 0 ? `${scanProgress}%` : 'Scanning'}
+                            Scanning
                           </>
                         ) : (
                           <>

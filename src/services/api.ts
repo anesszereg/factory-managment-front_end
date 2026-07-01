@@ -390,4 +390,14 @@ export const supplierOrdersApi = {
   deletePayment: (paymentId: number) => api.delete(`/suppliers/payments/${paymentId}`),
 };
 
+export const ocrApi = {
+  scanImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post<{ text: string }>('/ocr', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
 export default api;
