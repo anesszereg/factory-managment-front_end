@@ -134,6 +134,7 @@ export interface MaterialConsumption {
 
 export interface DailyExpense {
   id: number;
+  moneyBoxId?: number;
   date: string;
   category: ExpenseCategory;
   amount: number;
@@ -141,6 +142,7 @@ export interface DailyExpense {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  moneyBox?: { id: number; name: string };
 }
 
 export enum IncomeSource {
@@ -154,6 +156,7 @@ export enum IncomeSource {
 
 export interface Income {
   id: number;
+  moneyBoxId?: number;
   date: string;
   source: IncomeSource;
   amount: number;
@@ -161,6 +164,7 @@ export interface Income {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  moneyBox?: { id: number; name: string };
 }
 
 export interface DashboardStats {
