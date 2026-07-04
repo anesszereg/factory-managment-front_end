@@ -766,7 +766,7 @@ export function Materials() {
             <div class="row"><span class="label">Material:</span><span class="value">${material?.name || 'Unknown'} (${material ? getUnitLabel(material.unit) : ''})</span></div>
             <div class="row"><span class="label">Quantity:</span><span class="value">${purchase.quantity}</span></div>
             <div class="row"><span class="label">Unit Price:</span><span class="value">${formatCurrency(purchase.unitPrice)}</span></div>
-            <div class="total row"><span class="label">Total Price:</span><span class="value">${formatCurrency(purchase.totalPrice)}</span></div>
+            <div class="total row"><span class="label">Total Price:</span><span class="value">${formatCurrency(purchase.totalPrice ?? purchase.quantity * purchase.unitPrice)}</span></div>
             <div class="footer">
               <p>Thank you for your business</p>
               <p>Printed on ${new Date().toLocaleString()}</p>
@@ -866,7 +866,7 @@ export function Materials() {
     ? filteredConsumption.filter(c => c.materialId === selectedMaterial.id).slice(0, 5)
     : [];
 
-  const totalSpent = filteredPurchases.reduce((sum, p) => sum + p.totalPrice, 0);
+  const totalSpent = filteredPurchases.reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0);
   const totalMaterialsValue = materials.reduce((sum, m) => {
     const avgPrice = purchases
       .filter(p => p.materialId === m.id)
@@ -875,7 +875,7 @@ export function Materials() {
   }, 0);
   
   const selectedMaterialSpent = selectedMaterial
-    ? filteredPurchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + p.totalPrice, 0)
+    ? filteredPurchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0)
     : 0;
   const selectedMaterialAvgPrice = selectedMaterial && purchases.filter(p => p.materialId === selectedMaterial.id).length > 0
     ? purchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + p.unitPrice, 0) / purchases.filter(p => p.materialId === selectedMaterial.id).length
@@ -933,11 +933,11 @@ export function Materials() {
       // Per-material columns
       materials.forEach(m => {
         const qty = monthPurchases.filter(p => p.materialId === m.id).reduce((s, p) => s + p.quantity, 0);
-        const spent = monthPurchases.filter(p => p.materialId === m.id).reduce((s, p) => s + p.totalPrice, 0);
+        const spent = monthPurchases.filter(p => p.materialId === m.id).reduce((s, p) => s + (p.totalPrice ?? p.quantity * p.unitPrice), 0);
         row[`${m.name} (Qty)`] = Math.round(qty * 100) / 100;
         row[`${m.name} (Spent)`] = Math.round(spent * 100) / 100;
       });
-      row['Total Spent'] = Math.round(monthPurchases.reduce((s, p) => s + p.totalPrice, 0) * 100) / 100;
+      row['Total Spent'] = Math.round(monthPurchases.reduce((s, p) => s + (p.totalPrice ?? p.quantity * p.unitPrice), 0) * 100) / 100;
       return row;
     });
     const wsPurchases = XLSX.utils.json_to_sheet(purchasesByMonth);
@@ -969,7 +969,7 @@ export function Materials() {
         const d = new Date(c.date);
         return d.getFullYear() === currentYear && d.getMonth() === idx;
       });
-      const totalPurchaseSpend = mPurchases.reduce((s, p) => s + p.totalPrice, 0);
+      const totalPurchaseSpend = mPurchases.reduce((s, p) => s + (p.totalPrice ?? p.quantity * p.unitPrice), 0);
       const totalConsumedQty = mConsumption.reduce((s, c) => s + c.quantity, 0);
       return {
         'Month': month,
@@ -995,7 +995,7 @@ export function Materials() {
           'Supplier': p.supplier?.name || p.supplierName || '',
           'Quantity': p.quantity,
           'Unit Price': p.unitPrice,
-          'Total Price': p.totalPrice,
+          'Total Price': p.totalPrice ?? p.quantity * p.unitPrice,
         };
       });
     const wsAllPurchases = XLSX.utils.json_to_sheet(purchaseExport);
@@ -1947,7 +1947,7 @@ export function Materials() {
                                 +{purchase.quantity} {getUnitLabel(selectedMaterial.unit)}
                               </span>
                               <span className="text-sm font-semibold text-green-900">
-                                {formatCurrency(purchase.totalPrice)}
+                                {formatCurrency(purchase.totalPrice ?? purchase.quantity * purchase.unitPrice)}
                               </span>
                             </div>
                           </div>
