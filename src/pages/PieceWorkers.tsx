@@ -790,57 +790,84 @@ export default function PieceWorkers() {
     let html = `
       <html><head><title>Multiple Receipts</title>
       <style>
-        @page { size: 100mm 100mm; margin: 0; }
+        @page { size: A4; margin: 10mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; padding: 4mm; line-height: 1.35; }
-        .receipt { width: 100mm; min-height: 100mm; padding: 4mm; page-break-after: always; }
-        .title { text-align: center; font-size: 13px; font-weight: bold; text-transform: uppercase; }
-        .center { text-align: center; font-size: 9px; }
-        .sep { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
-        .ref { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 1mm; }
-        table { width: 100%; border-collapse: collapse; font-size: 9px; margin: 1mm 0; }
-        th { border-bottom: 1px solid #000; padding: 0.5mm 0; font-size: 8px; text-align: left; }
-        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; }
+        body { font-family: 'Courier New', monospace; font-size: 8px; line-height: 1.2; }
+        .page { width: 190mm; min-height: 277mm; padding: 5mm; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5mm; height: 277mm; }
+        .receipt { border: 1px solid #000; padding: 3mm; display: flex; flex-direction: column; }
+        .title { text-align: center; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 1mm; }
+        .center { text-align: center; font-size: 7px; margin-bottom: 1mm; }
+        .sep { border-bottom: 1px dashed #000; margin: 1mm 0; }
+        .ref { display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0.5mm 0; }
+        th { border-bottom: 1px solid #000; padding: 0.3mm 0; font-size: 6px; text-align: left; }
+        td { padding: 0.3mm 0; border-bottom: 1px dotted #ccc; font-size: 6px; }
         td.c { text-align: center; } td.r { text-align: right; } th.c { text-align: center; } th.r { text-align: right; }
-        .row { display: flex; justify-content: space-between; padding: 0.5mm 0; }
-        .row.total { font-size: 11px; font-weight: bold; border-top: 1px solid #000; padding-top: 1mm; margin-top: 0.5mm; }
+        .row { display: flex; justify-content: space-between; padding: 0.3mm 0; }
+        .row.total { font-size: 8px; font-weight: bold; border-top: 1px solid #000; padding-top: 0.5mm; margin-top: 0.5mm; }
         .row.red { color: #c00; font-weight: bold; }
-        .footer { text-align: center; font-size: 8px; color: #666; margin-top: 2mm; padding-top: 1.5mm; border-top: 1px dashed #000; }
+        .footer { text-align: center; font-size: 6px; color: #666; margin-top: auto; padding-top: 1mm; border-top: 1px dashed #000; }
+        .page-break { page-break-after: always; }
       </style></head><body>
     `;
 
-    receiptsToPrint.forEach((receipt) => {
-      const worker = workers.find(w => w.id === receipt.pieceWorkerId);
-      const remaining = receipt.totalAmount - receipt.paidAmount;
-      const itemsHtml = receipt.items?.map(item => `
-        <tr>
-          <td>${item.itemName}</td>
-          <td class="c">${item.quantity}</td>
-          <td class="r">${formatCurrency(item.pricePerPiece)}</td>
-          <td class="r">${formatCurrency(item.totalPrice)}</td>
-        </tr>
-      `).join('') || '';
+    const receiptsPerPage = 6;
+    const totalPages = Math.ceil(receiptsToPrint.length / receiptsPerPage);
 
-      html += `
-        <div class="receipt">
-          <div class="title">BON DE TRAVAIL</div>
-          <div class="center">${worker?.firstName} ${worker?.lastName}</div>
-          <div class="center">${format(new Date(receipt.date), 'dd/MM/yyyy')}</div>
-          <div class="sep"></div>
-          <div class="ref"><span>Réf: #${receipt.id}</span><span>${receipt.paymentStatus}</span></div>
-          <table>
-            <thead><tr><th>Désignation</th><th class="c">Qté</th><th class="r">P.U</th><th class="r">Total</th></tr></thead>
-            <tbody>${itemsHtml}</tbody>
-          </table>
-          <div class="sep"></div>
-          <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
-          <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
-          <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
-          ${receipt.notes ? `<div style="font-size:8px;margin-top:1mm;color:#555">Note: ${receipt.notes}</div>` : ''}
-          <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
-        </div>
-      `;
-    });
+    for (let page = 0; page < totalPages; page++) {
+      const startIndex = page * receiptsPerPage;
+      const endIndex = Math.min(startIndex + receiptsPerPage, receiptsToPrint.length);
+      const pageReceipts = receiptsToPrint.slice(startIndex, endIndex);
+
+      html += `<div class="page ${page < totalPages - 1 ? 'page-break' : ''}">`;
+      html += `<div class="grid">`;
+
+      // Fill empty slots if needed to maintain grid layout
+      const gridSlots: (DailyPieceReceipt | null)[] = [...pageReceipts];
+      while (gridSlots.length < receiptsPerPage) {
+        gridSlots.push(null);
+      }
+
+      gridSlots.forEach((receipt) => {
+        if (receipt) {
+          const worker = workers.find(w => w.id === receipt.pieceWorkerId);
+          const remaining = receipt.totalAmount - receipt.paidAmount;
+          const itemsHtml = receipt.items?.map(item => `
+            <tr>
+              <td>${item.itemName}</td>
+              <td class="c">${item.quantity}</td>
+              <td class="r">${formatCurrency(item.pricePerPiece)}</td>
+              <td class="r">${formatCurrency(item.totalPrice)}</td>
+            </tr>
+          `).join('') || '';
+
+          html += `
+            <div class="receipt">
+              <div class="title">BON DE TRAVAIL</div>
+              <div class="center">${worker?.firstName} ${worker?.lastName}</div>
+              <div class="center">${format(new Date(receipt.date), 'dd/MM/yyyy')}</div>
+              <div class="sep"></div>
+              <div class="ref"><span>Réf: #${receipt.id}</span><span>${receipt.paymentStatus}</span></div>
+              <table>
+                <thead><tr><th>Désignation</th><th class="c">Qté</th><th class="r">P.U</th><th class="r">Total</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+              <div class="sep"></div>
+              <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
+              <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
+              <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
+              ${receipt.notes ? `<div style="font-size:6px;margin-top:0.5mm;color:#555">Note: ${receipt.notes}</div>` : ''}
+              <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
+            </div>
+          `;
+        } else {
+          html += `<div class="receipt"></div>`;
+        }
+      });
+
+      html += `</div></div>`;
+    }
 
     html += `</body></html>`;
     printWindow.document.write(html);
