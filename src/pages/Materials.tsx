@@ -742,35 +742,27 @@ export function Materials() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Purchase Receipt #${purchase.id}</title>
+            <title>Achat #${purchase.id}</title>
             <style>
-              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-              .title { font-size: 24px; font-weight: bold; margin: 0; }
-              .subtitle { font-size: 14px; color: #666; }
-              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-              .label { font-weight: bold; color: #333; }
-              .value { color: #000; }
-              .total { font-size: 18px; font-weight: bold; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; }
-              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-              @media print { body { padding: 10px; } }
+              @page { size: 100mm 100mm; margin: 0; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.4; }
+              .title { text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+              .row { display: flex; justify-content: space-between; padding: 1mm 0; border-bottom: 1px dotted #ccc; }
+              .amount-box { text-align: center; border: 1px solid #000; padding: 2mm; margin: 2mm 0; }
+              .amount-val { font-size: 15px; font-weight: bold; }
+              .footer { text-align: center; font-size: 8px; color: #666; margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #000; }
             </style>
           </head>
           <body>
-            <div class="header">
-              <p class="title">Purchase Receipt</p>
-              <p class="subtitle">#${purchase.id}</p>
-            </div>
-            <div class="row"><span class="label">Date:</span><span class="value">${formatDate(purchase.date)}</span></div>
-            <div class="row"><span class="label">Supplier:</span><span class="value">${getSupplierName(purchase)}</span></div>
-            <div class="row"><span class="label">Material:</span><span class="value">${material?.name || 'Unknown'} (${material ? getUnitLabel(material.unit) : ''})</span></div>
-            <div class="row"><span class="label">Quantity:</span><span class="value">${purchase.quantity}</span></div>
-            <div class="row"><span class="label">Unit Price:</span><span class="value">${formatCurrency(purchase.unitPrice)}</span></div>
-            <div class="total row"><span class="label">Total Price:</span><span class="value">${formatCurrency(purchase.totalPrice ?? purchase.quantity * purchase.unitPrice)}</span></div>
-            <div class="footer">
-              <p>Thank you for your business</p>
-              <p>Printed on ${new Date().toLocaleString()}</p>
-            </div>
+            <div class="title">ACHAT MATÉRIAU</div>
+            <div class="row"><span>Date:</span><span>${formatDate(purchase.date)}</span></div>
+            <div class="row"><span>Fournisseur:</span><span>${getSupplierName(purchase)}</span></div>
+            <div class="row"><span>Matériau:</span><span>${material?.name || 'Inconnu'}</span></div>
+            <div class="row"><span>Quantité:</span><span>${purchase.quantity}</span></div>
+            <div class="row"><span>Prix Unit:</span><span>${formatCurrency(purchase.unitPrice)}</span></div>
+            <div class="amount-box"><div style="font-size:9px">Total</div><div class="amount-val">${formatCurrency(purchase.totalPrice ?? purchase.quantity * purchase.unitPrice)}</div></div>
+            <div class="footer"><p>Bon pour achat</p><p>Imprimé le: ${new Date().toLocaleString('fr-DZ')}</p></div>
           </body>
         </html>
       `);
@@ -791,33 +783,27 @@ export function Materials() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Consumption Receipt #${cons.id}</title>
+            <title>Consommation #${cons.id}</title>
             <style>
-              body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
-              .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-              .title { font-size: 24px; font-weight: bold; margin: 0; }
-              .subtitle { font-size: 14px; color: #666; }
-              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-              .label { font-weight: bold; color: #333; }
-              .value { color: #000; }
-              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-              @media print { body { padding: 10px; } }
+              @page { size: 100mm 100mm; margin: 0; }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.4; }
+              .title { text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+              .row { display: flex; justify-content: space-between; padding: 1mm 0; border-bottom: 1px dotted #ccc; }
+              .qty-box { text-align: center; border: 1px solid #000; padding: 2mm; margin: 2mm 0; }
+              .qty-val { font-size: 15px; font-weight: bold; }
+              .footer { text-align: center; font-size: 8px; color: #666; margin-top: 3mm; padding-top: 2mm; border-top: 1px dashed #000; }
             </style>
           </head>
           <body>
-            <div class="header">
-              <p class="title">Material Consumption Receipt</p>
-              <p class="subtitle">#${cons.id}</p>
-            </div>
-            <div class="row"><span class="label">Date:</span><span class="value">${formatDate(cons.date)}</span></div>
-            <div class="row"><span class="label">Material:</span><span class="value">${material?.name || 'Unknown'} (${material ? getUnitLabel(material.unit) : ''})</span></div>
-            <div class="row"><span class="label">Quantity:</span><span class="value">${cons.quantity}</span></div>
-            <div class="row"><span class="label">Consumed By:</span><span class="value">${personName}</span></div>
-            <div class="row"><span class="label">Notes:</span><span class="value">${cons.notes || '-'}</span></div>
-            <div class="footer">
-              <p>Factory Management Platform</p>
-              <p>Printed on ${new Date().toLocaleString()}</p>
-            </div>
+            <div class="title">CONSOMMATION MATÉRIAU</div>
+            <div class="row"><span>Date:</span><span>${formatDate(cons.date)}</span></div>
+            <div class="row"><span>Matériau:</span><span>${material?.name || 'Inconnu'}</span></div>
+            <div class="row"><span>Unité:</span><span>${material ? getUnitLabel(material.unit) : ''}</span></div>
+            <div class="row"><span>Par:</span><span>${personName}</span></div>
+            ${cons.notes ? `<div class="row"><span>Notes:</span><span>${cons.notes}</span></div>` : ''}
+            <div class="qty-box"><div style="font-size:9px">Quantité</div><div class="qty-val">${cons.quantity}</div></div>
+            <div class="footer"><p>Bon pour consommation</p><p>Imprimé le: ${new Date().toLocaleString('fr-DZ')}</p></div>
           </body>
         </html>
       `);
@@ -868,17 +854,24 @@ export function Materials() {
 
   const totalSpent = filteredPurchases.reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0);
   const totalMaterialsValue = materials.reduce((sum, m) => {
-    const avgPrice = purchases
-      .filter(p => p.materialId === m.id)
-      .reduce((total, p, _, arr) => total + p.unitPrice / arr.length, 0);
+    const materialPurchases = purchases.filter(p => p.materialId === m.id);
+    const avgPrice = materialPurchases.length > 0
+      ? materialPurchases.reduce((total, p) => total + p.unitPrice, 0) / materialPurchases.length
+      : m.purchasePrice;
     return sum + (m.currentStock * avgPrice);
   }, 0);
   
   const selectedMaterialSpent = selectedMaterial
     ? filteredPurchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0)
     : 0;
-  const selectedMaterialAvgPrice = selectedMaterial && purchases.filter(p => p.materialId === selectedMaterial.id).length > 0
-    ? purchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + p.unitPrice, 0) / purchases.filter(p => p.materialId === selectedMaterial.id).length
+  const selectedMaterialAvgPrice = selectedMaterial
+    ? (() => {
+        const materialPurchases = purchases.filter(p => p.materialId === selectedMaterial.id);
+        if (materialPurchases.length > 0) {
+          return materialPurchases.reduce((sum, p) => sum + p.unitPrice, 0) / materialPurchases.length;
+        }
+        return selectedMaterial.purchasePrice;
+      })()
     : 0;
   const selectedMaterialConsumedQty = selectedMaterial
     ? filteredConsumption.filter(c => c.materialId === selectedMaterial.id).reduce((sum, c) => sum + c.quantity, 0)
@@ -888,9 +881,10 @@ export function Materials() {
     : 0;
   
   const totalConsumedValue = materials.reduce((sum, m) => {
-    const avgPrice = purchases
-      .filter(p => p.materialId === m.id)
-      .reduce((total, p, _, arr) => arr.length > 0 ? total + p.unitPrice / arr.length : 0, 0);
+    const materialPurchases = purchases.filter(p => p.materialId === m.id);
+    const avgPrice = materialPurchases.length > 0
+      ? materialPurchases.reduce((total, p) => total + p.unitPrice, 0) / materialPurchases.length
+      : m.purchasePrice;
     const consumedQty = filteredConsumption
       .filter(c => c.materialId === m.id)
       .reduce((total, c) => total + c.quantity, 0);
@@ -1854,16 +1848,13 @@ export function Materials() {
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Average Unit Price</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {selectedMaterialAvgPrice > 0 ? formatCurrency(selectedMaterialAvgPrice) : 'N/A'}
+                        {selectedMaterialAvgPrice > 0 ? formatCurrency(selectedMaterialAvgPrice) : formatCurrency(selectedMaterial.purchasePrice)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Stock Value</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {selectedMaterialAvgPrice > 0 
-                          ? formatCurrency(selectedMaterial.currentStock * selectedMaterialAvgPrice)
-                          : 'N/A'
-                        }
+                        {formatCurrency(selectedMaterial.currentStock * (selectedMaterialAvgPrice > 0 ? selectedMaterialAvgPrice : selectedMaterial.purchasePrice))}
                       </p>
                     </div>
                     <div>
