@@ -868,17 +868,24 @@ export function Materials() {
 
   const totalSpent = filteredPurchases.reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0);
   const totalMaterialsValue = materials.reduce((sum, m) => {
-    const avgPrice = purchases
-      .filter(p => p.materialId === m.id)
-      .reduce((total, p, _, arr) => total + p.unitPrice / arr.length, 0);
+    const materialPurchases = purchases.filter(p => p.materialId === m.id);
+    const avgPrice = materialPurchases.length > 0
+      ? materialPurchases.reduce((total, p) => total + p.unitPrice, 0) / materialPurchases.length
+      : m.purchasePrice;
     return sum + (m.currentStock * avgPrice);
   }, 0);
   
   const selectedMaterialSpent = selectedMaterial
     ? filteredPurchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + (p.totalPrice ?? p.quantity * p.unitPrice), 0)
     : 0;
-  const selectedMaterialAvgPrice = selectedMaterial && purchases.filter(p => p.materialId === selectedMaterial.id).length > 0
-    ? purchases.filter(p => p.materialId === selectedMaterial.id).reduce((sum, p) => sum + p.unitPrice, 0) / purchases.filter(p => p.materialId === selectedMaterial.id).length
+  const selectedMaterialAvgPrice = selectedMaterial
+    ? (() => {
+        const materialPurchases = purchases.filter(p => p.materialId === selectedMaterial.id);
+        if (materialPurchases.length > 0) {
+          return materialPurchases.reduce((sum, p) => sum + p.unitPrice, 0) / materialPurchases.length;
+        }
+        return selectedMaterial.purchasePrice;
+      })()
     : 0;
   const selectedMaterialConsumedQty = selectedMaterial
     ? filteredConsumption.filter(c => c.materialId === selectedMaterial.id).reduce((sum, c) => sum + c.quantity, 0)
@@ -888,9 +895,10 @@ export function Materials() {
     : 0;
   
   const totalConsumedValue = materials.reduce((sum, m) => {
-    const avgPrice = purchases
-      .filter(p => p.materialId === m.id)
-      .reduce((total, p, _, arr) => arr.length > 0 ? total + p.unitPrice / arr.length : 0, 0);
+    const materialPurchases = purchases.filter(p => p.materialId === m.id);
+    const avgPrice = materialPurchases.length > 0
+      ? materialPurchases.reduce((total, p) => total + p.unitPrice, 0) / materialPurchases.length
+      : m.purchasePrice;
     const consumedQty = filteredConsumption
       .filter(c => c.materialId === m.id)
       .reduce((total, c) => total + c.quantity, 0);
@@ -1854,16 +1862,13 @@ export function Materials() {
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Average Unit Price</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {selectedMaterialAvgPrice > 0 ? formatCurrency(selectedMaterialAvgPrice) : 'N/A'}
+                        {selectedMaterialAvgPrice > 0 ? formatCurrency(selectedMaterialAvgPrice) : formatCurrency(selectedMaterial.purchasePrice)}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-600 mb-1">Stock Value</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {selectedMaterialAvgPrice > 0 
-                          ? formatCurrency(selectedMaterial.currentStock * selectedMaterialAvgPrice)
-                          : 'N/A'
-                        }
+                        {formatCurrency(selectedMaterial.currentStock * (selectedMaterialAvgPrice > 0 ? selectedMaterialAvgPrice : selectedMaterial.purchasePrice))}
                       </p>
                     </div>
                     <div>
