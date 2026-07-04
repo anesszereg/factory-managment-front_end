@@ -79,6 +79,7 @@ export default function PieceWorkers() {
   const [showPaymentReceipt, setShowPaymentReceipt] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [paymentHistoryWorker, setPaymentHistoryWorker] = useState<PieceWorker | null>(null);
+  const [selectedReceipts, setSelectedReceipts] = useState<number[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -95,8 +96,8 @@ export default function PieceWorkers() {
         pieceWorkersApi.getAll(filterStatus ? { status: filterStatus } : undefined),
         dailyPieceReceiptsApi.getAll(),
       ]);
-      setWorkers(workersRes.data);
-      setReceipts(receiptsRes.data);
+      setWorkers(workersRes.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setReceipts(receiptsRes.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -112,7 +113,7 @@ export default function PieceWorkers() {
       if (filterEndDate) filters.endDate = filterEndDate;
       
       const res = await dailyPieceReceiptsApi.getAll(Object.keys(filters).length > 0 ? filters : undefined);
-      setReceipts(res.data);
+      setReceipts(res.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (error) {
       console.error('Failed to fetch receipts:', error);
     }
@@ -776,6 +777,129 @@ export default function PieceWorkers() {
     printWindow.print();
   };
 
+  const printMultipleReceipts = () => {
+    if (selectedReceipts.length === 0) {
+      toast.error('Please select at least one receipt to print');
+      return;
+    }
+
+    const receiptsToPrint = receipts.filter(r => selectedReceipts.includes(r.id));
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let html = `
+      <html><head><title>Multiple Receipts</title>
+      <style>
+        @page { size: A4; margin: 10mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; font-size: 8px; line-height: 1.2; }
+        .page { width: 190mm; min-height: 277mm; padding: 5mm; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5mm; height: 277mm; }
+        .receipt { border: 1px solid #000; padding: 3mm; display: flex; flex-direction: column; }
+        .title { text-align: center; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 1mm; }
+        .center { text-align: center; font-size: 7px; margin-bottom: 1mm; }
+        .sep { border-bottom: 1px dashed #000; margin: 1mm 0; }
+        .ref { display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0.5mm 0; }
+        th { border-bottom: 1px solid #000; padding: 0.3mm 0; font-size: 6px; text-align: left; }
+        td { padding: 0.3mm 0; border-bottom: 1px dotted #ccc; font-size: 6px; }
+        td.c { text-align: center; } td.r { text-align: right; } th.c { text-align: center; } th.r { text-align: right; }
+        .row { display: flex; justify-content: space-between; padding: 0.3mm 0; }
+        .row.total { font-size: 8px; font-weight: bold; border-top: 1px solid #000; padding-top: 0.5mm; margin-top: 0.5mm; }
+        .row.red { color: #c00; font-weight: bold; }
+        .footer { text-align: center; font-size: 6px; color: #666; margin-top: auto; padding-top: 1mm; border-top: 1px dashed #000; }
+        .page-break { page-break-after: always; }
+      </style></head><body>
+    `;
+
+    const receiptsPerPage = 6;
+    const totalPages = Math.ceil(receiptsToPrint.length / receiptsPerPage);
+
+    for (let page = 0; page < totalPages; page++) {
+      const startIndex = page * receiptsPerPage;
+      const endIndex = Math.min(startIndex + receiptsPerPage, receiptsToPrint.length);
+      const pageReceipts = receiptsToPrint.slice(startIndex, endIndex);
+
+      html += `<div class="page ${page < totalPages - 1 ? 'page-break' : ''}">`;
+      html += `<div class="grid">`;
+
+      // Fill empty slots if needed to maintain grid layout
+      const gridSlots: (DailyPieceReceipt | null)[] = [...pageReceipts];
+      while (gridSlots.length < receiptsPerPage) {
+        gridSlots.push(null);
+      }
+
+      gridSlots.forEach((receipt) => {
+        if (receipt) {
+          const worker = workers.find(w => w.id === receipt.pieceWorkerId);
+          const remaining = receipt.totalAmount - receipt.paidAmount;
+          const itemsHtml = receipt.items?.map(item => `
+            <tr>
+              <td>${item.itemName}</td>
+              <td class="c">${item.quantity}</td>
+              <td class="r">${formatCurrency(item.pricePerPiece)}</td>
+              <td class="r">${formatCurrency(item.totalPrice)}</td>
+            </tr>
+          `).join('') || '';
+
+          html += `
+            <div class="receipt">
+              <div class="title">BON DE TRAVAIL</div>
+              <div class="center">${worker?.firstName} ${worker?.lastName}</div>
+              <div class="center">${format(new Date(receipt.date), 'dd/MM/yyyy')}</div>
+              <div class="sep"></div>
+              <div class="ref"><span>Réf: #${receipt.id}</span><span>${receipt.paymentStatus}</span></div>
+              <table>
+                <thead><tr><th>Désignation</th><th class="c">Qté</th><th class="r">P.U</th><th class="r">Total</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+              <div class="sep"></div>
+              <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
+              <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
+              <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
+              ${receipt.notes ? `<div style="font-size:6px;margin-top:0.5mm;color:#555">Note: ${receipt.notes}</div>` : ''}
+              <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
+            </div>
+          `;
+        } else {
+          html += `<div class="receipt"></div>`;
+        }
+      });
+
+      html += `</div></div>`;
+    }
+
+    html += `</body></html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const toggleReceiptSelection = (receiptId: number) => {
+    setSelectedReceipts(prev => 
+      prev.includes(receiptId) 
+        ? prev.filter(id => id !== receiptId)
+        : [...prev, receiptId]
+    );
+  };
+
+  const selectAllReceipts = () => {
+    const visibleReceiptIds = receipts
+      .filter(r => {
+        if (filterWorkerId && r.pieceWorkerId !== filterWorkerId) return false;
+        if (filterStartDate && new Date(r.date) < new Date(filterStartDate)) return false;
+        if (filterEndDate && new Date(r.date) > new Date(filterEndDate)) return false;
+        return true;
+      })
+      .map(r => r.id);
+    
+    if (selectedReceipts.length === visibleReceiptIds.length && visibleReceiptIds.every(id => selectedReceipts.includes(id))) {
+      setSelectedReceipts([]);
+    } else {
+      setSelectedReceipts(visibleReceiptIds);
+    }
+  };
+
   const getStatusBadgeClass = (status: PieceWorkerStatus) => {
     switch (status) {
       case PieceWorkerStatus.ACTIVE:
@@ -1121,21 +1245,46 @@ export default function PieceWorkers() {
           </CardHeader>
           <CardContent>
             <div className="bg-gray-50 rounded-xl p-3 mb-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-700">Filters</span>
-                {(filterWorkerId || filterStartDate || filterEndDate) && (
-                  <button
-                    onClick={() => {
-                      setFilterWorkerId('');
-                      setFilterStartDate('');
-                      setFilterEndDate('');
-                    }}
-                    className="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Clear all
-                  </button>
-                )}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Filters</span>
+                  {(filterWorkerId || filterStartDate || filterEndDate) && (
+                    <button
+                      onClick={() => {
+                        setFilterWorkerId('');
+                        setFilterStartDate('');
+                        setFilterEndDate('');
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedReceipts.length > 0 && filteredReceipts.every(r => selectedReceipts.includes(r.id))}
+                    onChange={selectAllReceipts}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-600">Select All</span>
+                  {selectedReceipts.length > 0 && (
+                    <>
+                      <span className="text-xs text-blue-600 font-medium">
+                        {selectedReceipts.length} selected
+                      </span>
+                      <button
+                        onClick={printMultipleReceipts}
+                        className="px-3 py-1 bg-purple-600 text-white text-xs font-medium rounded hover:bg-purple-700 flex items-center gap-1"
+                      >
+                        <Printer className="h-3 w-3" />
+                        Print Selected
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Select
@@ -1187,6 +1336,12 @@ export default function PieceWorkers() {
                   <div key={receipt.id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedReceipts.includes(receipt.id)}
+                          onChange={() => toggleReceiptSelection(receipt.id)}
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        />
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${getAvatarColor(receipt.pieceWorkerId)}`}>
                           {getInitials(worker?.firstName || '?', worker?.lastName)}
                         </div>
@@ -1274,6 +1429,14 @@ export default function PieceWorkers() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                      <input
+                        type="checkbox"
+                        checked={selectedReceipts.length > 0 && filteredReceipts.every(r => selectedReceipts.includes(r.id))}
+                        onChange={selectAllReceipts}
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Worker</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Items</th>
@@ -1292,6 +1455,12 @@ export default function PieceWorkers() {
                       <tr key={receipt.id} className="hover:bg-blue-50/40 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedReceipts.includes(receipt.id)}
+                              onChange={() => toggleReceiptSelection(receipt.id)}
+                              className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                            />
                             <div className={`h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold ${getAvatarColor(receipt.pieceWorkerId)}`}>
                               {getInitials(worker?.firstName || '?', worker?.lastName)}
                             </div>
