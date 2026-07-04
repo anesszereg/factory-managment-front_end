@@ -743,19 +743,19 @@ export default function PieceWorkers() {
       <style>
         @page { size: 100mm 100mm; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 10px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.35; }
-        .title { text-align: center; font-size: 13px; font-weight: bold; text-transform: uppercase; }
-        .center { text-align: center; font-size: 9px; }
+        body { font-family: 'Courier New', monospace; font-size: 12px; width: 100mm; min-height: 100mm; padding: 4mm; line-height: 1.4; }
+        .title { text-align: center; font-size: 15px; font-weight: bold; text-transform: uppercase; }
+        .center { text-align: center; font-size: 11px; }
         .sep { border-bottom: 1px dashed #000; margin: 1.5mm 0; }
-        .ref { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 1mm; }
-        table { width: 100%; border-collapse: collapse; font-size: 9px; margin: 1mm 0; }
-        th { border-bottom: 1px solid #000; padding: 0.5mm 0; font-size: 8px; text-align: left; }
-        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; }
+        .ref { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 1mm 0; }
+        th { border-bottom: 1px solid #000; padding: 0.5mm 0; font-size: 10px; text-align: left; }
+        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; font-size: 10px; }
         td.c { text-align: center; } td.r { text-align: right; } th.c { text-align: center; } th.r { text-align: right; }
         .row { display: flex; justify-content: space-between; padding: 0.5mm 0; }
-        .row.total { font-size: 11px; font-weight: bold; border-top: 1px solid #000; padding-top: 1mm; margin-top: 0.5mm; }
+        .row.total { font-size: 13px; font-weight: bold; border-top: 1px solid #000; padding-top: 1mm; margin-top: 0.5mm; }
         .row.red { color: #c00; font-weight: bold; }
-        .footer { text-align: center; font-size: 8px; color: #666; margin-top: 2mm; padding-top: 1.5mm; border-top: 1px dashed #000; }
+        .footer { text-align: center; font-size: 10px; color: #666; margin-top: 2mm; padding-top: 1.5mm; border-top: 1px dashed #000; }
       </style></head><body>
         <div class="title">BON DE TRAVAIL</div>
         <div class="center">${worker?.firstName} ${worker?.lastName}</div>
@@ -770,7 +770,7 @@ export default function PieceWorkers() {
         <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
         <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
         <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
-        ${receipt.notes ? `<div style="font-size:8px;margin-top:1mm;color:#555">Note: ${receipt.notes}</div>` : ''}
+        ${receipt.notes ? `<div style="font-size:10px;margin-top:1mm;color:#555">Note: ${receipt.notes}</div>` : ''}
         <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
       </body></html>`);
     printWindow.document.close();
@@ -792,22 +792,22 @@ export default function PieceWorkers() {
       <style>
         @page { size: A4; margin: 10mm; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 8px; line-height: 1.2; }
+        body { font-family: 'Courier New', monospace; font-size: 10px; line-height: 1.3; }
         .page { width: 190mm; min-height: 277mm; padding: 5mm; }
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5mm; height: 277mm; }
         .receipt { border: 1px solid #000; padding: 3mm; display: flex; flex-direction: column; }
-        .title { text-align: center; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 1mm; }
-        .center { text-align: center; font-size: 7px; margin-bottom: 1mm; }
+        .title { text-align: center; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 1mm; }
+        .center { text-align: center; font-size: 9px; margin-bottom: 1mm; }
         .sep { border-bottom: 1px dashed #000; margin: 1mm 0; }
-        .ref { display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 1mm; }
-        table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0.5mm 0; }
-        th { border-bottom: 1px solid #000; padding: 0.3mm 0; font-size: 6px; text-align: left; }
-        td { padding: 0.3mm 0; border-bottom: 1px dotted #ccc; font-size: 6px; }
+        .ref { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 9px; margin: 0.5mm 0; }
+        th { border-bottom: 1px solid #000; padding: 0.3mm 0; font-size: 8px; text-align: left; }
+        td { padding: 0.3mm 0; border-bottom: 1px dotted #ccc; font-size: 8px; }
         td.c { text-align: center; } td.r { text-align: right; } th.c { text-align: center; } th.r { text-align: right; }
         .row { display: flex; justify-content: space-between; padding: 0.3mm 0; }
-        .row.total { font-size: 8px; font-weight: bold; border-top: 1px solid #000; padding-top: 0.5mm; margin-top: 0.5mm; }
+        .row.total { font-size: 10px; font-weight: bold; border-top: 1px solid #000; padding-top: 0.5mm; margin-top: 0.5mm; }
         .row.red { color: #c00; font-weight: bold; }
-        .footer { text-align: center; font-size: 6px; color: #666; margin-top: auto; padding-top: 1mm; border-top: 1px dashed #000; }
+        .footer { text-align: center; font-size: 8px; color: #666; margin-top: auto; padding-top: 1mm; border-top: 1px dashed #000; }
         .page-break { page-break-after: always; }
       </style></head><body>
     `;
@@ -857,7 +857,7 @@ export default function PieceWorkers() {
               <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
               <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
               <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
-              ${receipt.notes ? `<div style="font-size:6px;margin-top:0.5mm;color:#555">Note: ${receipt.notes}</div>` : ''}
+              ${receipt.notes ? `<div style="font-size:8px;margin-top:0.5mm;color:#555">Note: ${receipt.notes}</div>` : ''}
               <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
             </div>
           `;

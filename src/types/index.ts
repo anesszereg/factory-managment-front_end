@@ -313,6 +313,9 @@ export interface Supplier {
   address?: string;
   notes?: string;
   status: SupplierStatus;
+  openingCredit?: number;
+  openingDebt?: number;
+  openingBalanceDate?: string;
   createdAt: string;
   updatedAt: string;
   orders?: SupplierOrder[];
