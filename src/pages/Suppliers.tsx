@@ -153,6 +153,9 @@ export default function Suppliers() {
         address: formData.get('address') as string || undefined,
         notes: formData.get('notes') as string || undefined,
         status: formData.get('status') as SupplierStatus,
+        openingCredit: parseFloat(formData.get('openingCredit') as string) || 0,
+        openingDebt: parseFloat(formData.get('openingDebt') as string) || 0,
+        openingBalanceDate: (formData.get('openingBalanceDate') as string) || undefined,
       };
 
       if (editingSupplier) {
@@ -1084,6 +1087,30 @@ export default function Suppliers() {
               defaultValue={editingSupplier?.notes || ''}
               placeholder="Additional notes"
               rows={2}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Opening Credit"
+                name="openingCredit"
+                type="number"
+                step="0.01"
+                defaultValue={editingSupplier?.openingCredit || 0}
+                placeholder="0.00"
+              />
+              <Input
+                label="Opening Debt"
+                name="openingDebt"
+                type="number"
+                step="0.01"
+                defaultValue={editingSupplier?.openingDebt || 0}
+                placeholder="0.00"
+              />
+            </div>
+            <Input
+              label="Opening Balance Date"
+              name="openingBalanceDate"
+              type="date"
+              defaultValue={editingSupplier?.openingBalanceDate || ''}
             />
             <Select
               label="Status"
