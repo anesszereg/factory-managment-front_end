@@ -40,6 +40,7 @@ export interface ModelMaterialRequirement {
   step: ProductionStep;
   materialId: number;
   quantity: number;
+  price: number;
   createdAt: string;
   updatedAt: string;
   material?: RawMaterial;

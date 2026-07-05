@@ -53,13 +53,13 @@ export const furnitureModelsApi = {
     name: string;
     description?: string;
     size: string;
-    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+    materialRequirements?: { step: string; materialId: number; quantity: number; price?: number }[];
   }) => api.post<FurnitureModel>('/furniture-models', data),
   update: (id: number, data: {
     name?: string;
     description?: string;
     size?: string;
-    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+    materialRequirements?: { step: string; materialId: number; quantity: number; price?: number }[];
   }) => api.put<FurnitureModel>(`/furniture-models/${id}`, data),
   delete: (id: number) => api.delete(`/furniture-models/${id}`),
 };
@@ -359,6 +359,9 @@ export const suppliersApi = {
     phone?: string;
     address?: string;
     notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
     status?: SupplierStatus;
   }) => api.post<Supplier>('/suppliers', data),
   update: (id: number, data: {
@@ -366,6 +369,9 @@ export const suppliersApi = {
     phone?: string;
     address?: string;
     notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
     status?: SupplierStatus;
   }) => api.put<Supplier>(`/suppliers/${id}`, data),
   delete: (id: number) => api.delete(`/suppliers/${id}`),
