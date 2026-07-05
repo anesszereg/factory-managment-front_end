@@ -405,6 +405,8 @@ export interface SupplierSummary {
   totalAmount: number;
   totalPaid: number;
   totalRemaining: number;
+  openingCredit: number;
+  openingDebt: number;
   pendingOrders: number;
   partialOrders: number;
   completedOrders: number;

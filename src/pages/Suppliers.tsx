@@ -402,14 +402,18 @@ export default function Suppliers() {
     const supplierOrders = getSupplierOrders();
     const totalAmount = supplierOrders.reduce((sum, o) => sum + o.totalAmount, 0);
     const totalPaid = supplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-    const totalRemaining = totalAmount - totalPaid;
-    
+    const openingCredit = selectedSupplier?.openingCredit || 0;
+    const openingDebt = selectedSupplier?.openingDebt || 0;
+    const totalRemaining = totalAmount - totalPaid + openingDebt - openingCredit;
+
     return {
       orders: supplierOrders,
       totalOrders: supplierOrders.length,
       totalAmount,
       totalPaid,
       totalRemaining,
+      openingCredit,
+      openingDebt,
       pendingCount: supplierOrders.filter(o => o.status === SupplierOrderStatus.PENDING).length,
       partialCount: supplierOrders.filter(o => o.status === SupplierOrderStatus.PARTIAL).length,
       completedCount: supplierOrders.filter(o => o.status === SupplierOrderStatus.COMPLETED).length,
@@ -1367,7 +1371,7 @@ export default function Suppliers() {
             return (
               <div className="space-y-4">
                 {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="bg-blue-50 p-3 rounded-lg text-center">
                     <p className="text-xs text-blue-600">Total Orders</p>
                     <p className="text-xl font-bold text-blue-900">{stats.totalOrders}</p>
@@ -1379,6 +1383,14 @@ export default function Suppliers() {
                   <div className="bg-green-50 p-3 rounded-lg text-center">
                     <p className="text-xs text-green-600">Total Paid</p>
                     <p className="text-xl font-bold text-green-900">{formatCurrency(stats.totalPaid)}</p>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-purple-600">Opening Credit</p>
+                    <p className="text-xl font-bold text-purple-900">{formatCurrency(stats.openingCredit)}</p>
+                  </div>
+                  <div className="bg-orange-50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-orange-600">Opening Debt</p>
+                    <p className="text-xl font-bold text-orange-900">{formatCurrency(stats.openingDebt)}</p>
                   </div>
                   <div className="bg-red-50 p-3 rounded-lg text-center">
                     <p className="text-xs text-red-600">Balance Due</p>
