@@ -91,32 +91,32 @@ export default function ClientsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-md">
+        <div className="bg-white rounded-xl border p-5">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm text-blue-100">Total Clients</p>
-              <p className="text-3xl font-bold mt-1">{clients.length}</p>
+              <p className="text-sm text-gray-500">Total Clients</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900">{clients.length}</p>
             </div>
-            <div className="p-2 bg-white/20 rounded-lg"><Users size={20} /></div>
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users size={20} /></div>
           </div>
-          <p className="text-xs text-blue-100 mt-2">{activeCount} actifs</p>
+          <p className="text-xs text-gray-400 mt-2">{activeCount} actifs</p>
         </div>
-        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-5 text-white shadow-md">
+        <div className="bg-white rounded-xl border p-5">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm text-orange-100">Créances Totales</p>
-              <p className="text-3xl font-bold mt-1">{totalOutstanding.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+              <p className="text-sm text-gray-500">Créances Totales</p>
+              <p className="text-2xl font-bold mt-1 text-orange-600">{totalOutstanding.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
             </div>
-            <div className="p-2 bg-white/20 rounded-lg"><Wallet size={20} /></div>
+            <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><Wallet size={20} /></div>
           </div>
         </div>
-        <div className="bg-gradient-to-br from-red-400 to-rose-500 rounded-2xl p-5 text-white shadow-md">
+        <div className="bg-white rounded-xl border p-5">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm text-red-100">Clients avec Solde</p>
-              <p className="text-3xl font-bold mt-1">{clients.filter(c => c.outstandingBalance > 0).length}</p>
+              <p className="text-sm text-gray-500">Clients avec Solde</p>
+              <p className="text-2xl font-bold mt-1 text-red-600">{clients.filter(c => c.outstandingBalance > 0).length}</p>
             </div>
-            <div className="p-2 bg-white/20 rounded-lg"><CreditCard size={20} /></div>
+            <div className="p-2 bg-red-50 text-red-600 rounded-lg"><CreditCard size={20} /></div>
           </div>
         </div>
       </div>
@@ -133,10 +133,10 @@ export default function ClientsPage() {
           {loading ? <p className="text-center py-8 text-gray-400">Chargement...</p> : (
             <div className="divide-y">
               {filtered.map(c => (
-                <div key={c.id} onClick={() => handleSelectClient(c)} className={`p-4 cursor-pointer transition-all hover:shadow-md ${selectedClient?.id === c.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600' : 'hover:bg-gray-50 border-b'}`}>
+                <div key={c.id} onClick={() => handleSelectClient(c)} className={`p-4 cursor-pointer transition-colors ${selectedClient?.id === c.id ? 'bg-blue-50 border-l-4 border-blue-600' : 'hover:bg-gray-50 border-b'}`}>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedClient?.id === c.id ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedClient?.id === c.id ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
                         {c.firstName[0]}{c.lastName[0]}
                       </div>
                       <div>
@@ -163,24 +163,24 @@ export default function ClientsPage() {
         {selectedClient && (
           <div className="w-[420px] space-y-4">
             {/* Profile Card */}
-            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5">
+            <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="bg-gray-50 p-5 border-b">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl border-2 border-white/30">
+                    <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl">
                       {selectedClient.firstName[0]}{selectedClient.lastName[0]}
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">{selectedClient.firstName} {selectedClient.lastName}</h2>
-                      {selectedClient.company && <p className="text-sm text-blue-100 flex items-center gap-1"><Building2 size={12} /> {selectedClient.company}</p>}
-                      <span className={`inline-flex mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${selectedClient.status === ClientStatus.ACTIVE ? 'bg-green-400/20 text-green-100' : 'bg-gray-400/20 text-gray-200'}`}>
+                      <h2 className="text-xl font-bold text-gray-900">{selectedClient.firstName} {selectedClient.lastName}</h2>
+                      {selectedClient.company && <p className="text-sm text-gray-500 flex items-center gap-1"><Building2 size={12} /> {selectedClient.company}</p>}
+                      <span className={`inline-flex mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${selectedClient.status === ClientStatus.ACTIVE ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                         {selectedClient.status === ClientStatus.ACTIVE ? 'Actif' : 'Inactif'}
                       </span>
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => handleToggleStatus(selectedClient)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Toggle status"><Eye size={14} /></button>
-                    <button onClick={() => handleDelete(selectedClient.id)} className="p-1.5 text-white/70 hover:text-red-200 hover:bg-white/10 rounded-lg transition-colors" title="Delete"><Trash2 size={14} /></button>
+                    <button onClick={() => handleToggleStatus(selectedClient)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Toggle status"><Eye size={14} /></button>
+                    <button onClick={() => handleDelete(selectedClient.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 size={14} /></button>
                   </div>
                 </div>
               </div>
@@ -189,31 +189,31 @@ export default function ClientsPage() {
                 {/* Contact Details */}
                 <div className="grid grid-cols-1 gap-2">
                   {selectedClient.phone && (
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                       <div className="p-1.5 bg-blue-100 text-blue-600 rounded-md"><Phone size={14} /></div>
                       <div><p className="text-xs text-gray-500">Téléphone</p><p className="text-sm font-medium text-gray-900">{selectedClient.phone}</p></div>
                     </div>
                   )}
                   {selectedClient.email && (
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                       <div className="p-1.5 bg-purple-100 text-purple-600 rounded-md"><Mail size={14} /></div>
                       <div><p className="text-xs text-gray-500">Email</p><p className="text-sm font-medium text-gray-900">{selectedClient.email}</p></div>
                     </div>
                   )}
                   {selectedClient.address && (
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                       <div className="p-1.5 bg-orange-100 text-orange-600 rounded-md"><MapPin size={14} /></div>
                       <div><p className="text-xs text-gray-500">Adresse</p><p className="text-sm font-medium text-gray-900">{selectedClient.address}</p></div>
                     </div>
                   )}
                   {selectedClient.openingBalanceDate && (
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50">
                       <div className="p-1.5 bg-teal-100 text-teal-600 rounded-md"><Calendar size={14} /></div>
                       <div><p className="text-xs text-gray-500">Date d'ouverture</p><p className="text-sm font-medium text-gray-900">{new Date(selectedClient.openingBalanceDate).toLocaleDateString('fr-FR')}</p></div>
                     </div>
                   )}
                   {selectedClient.notes && (
-                    <div className="flex items-start gap-3 p-2 rounded-lg bg-gray-50/70">
+                    <div className="flex items-start gap-3 p-2 rounded-lg bg-gray-50">
                       <div className="p-1.5 bg-gray-200 text-gray-600 rounded-md"><FileText size={14} /></div>
                       <div><p className="text-xs text-gray-500">Notes</p><p className="text-sm font-medium text-gray-900">{selectedClient.notes}</p></div>
                     </div>
@@ -224,19 +224,19 @@ export default function ClientsPage() {
                 <div className="border-t pt-4">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1"><Wallet size={12} /> Résumé du compte</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-100">
                       <p className="text-xs text-green-600 mb-1 flex items-center gap-1"><ArrowDownRight size={12} /> Crédit initial</p>
                       <p className="text-lg font-bold text-green-700">{(selectedClient.openingCredit || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                     </div>
-                    <div className="bg-orange-50 rounded-xl p-3 border border-orange-100">
+                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
                       <p className="text-xs text-orange-600 mb-1 flex items-center gap-1"><ArrowUpRight size={12} /> Dette initiale</p>
                       <p className="text-lg font-bold text-orange-700">{(selectedClient.openingDebt || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                     </div>
-                    <div className={`rounded-xl p-3 border ${selectedClient.outstandingBalance > 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                    <div className={`rounded-lg p-3 border ${selectedClient.outstandingBalance > 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
                       <p className={`text-xs mb-1 ${selectedClient.outstandingBalance > 0 ? 'text-red-600' : 'text-blue-600'}`}>Solde actuel</p>
                       <p className={`text-lg font-bold ${selectedClient.outstandingBalance > 0 ? 'text-red-700' : 'text-blue-700'}`}>{selectedClient.outstandingBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                     </div>
-                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                       <p className="text-xs text-gray-600 mb-1">Limite Crédit</p>
                       <p className="text-lg font-bold text-gray-800">{selectedClient.creditLimit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                     </div>
@@ -244,7 +244,7 @@ export default function ClientsPage() {
                 </div>
 
                 {selectedClient.outstandingBalance > 0 && (
-                  <button onClick={() => setShowPaymentForm(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl text-sm font-medium hover:from-green-700 hover:to-emerald-700 shadow-sm transition-all">
+                  <button onClick={() => setShowPaymentForm(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
                     <CreditCard size={16} /> Enregistrer Paiement
                   </button>
                 )}
@@ -252,8 +252,8 @@ export default function ClientsPage() {
             </div>
 
             {/* Ledger */}
-            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-              <div className="p-4 border-b flex items-center gap-2"><Receipt size={16} className="text-indigo-600" /><p className="font-semibold text-sm text-gray-800">Historique des Transactions</p></div>
+            <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="p-4 border-b flex items-center gap-2 bg-gray-50"><Receipt size={16} className="text-gray-600" /><p className="font-semibold text-sm text-gray-800">Historique des Transactions</p></div>
               <div className="divide-y max-h-80 overflow-y-auto">
                 {ledger.map(tx => (
                   <div key={tx.id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
@@ -282,25 +282,85 @@ export default function ClientsPage() {
 
       {/* Create Client Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Users size={18} /> Nouveau Client</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-sm font-medium text-gray-700">Prénom *</label><input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Nom *</label><input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Société</label><input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Téléphone</label><input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Email</label><input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Limite Crédit (DA)</label><input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Adresse</label><input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Crédit initial (DA)</label><input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Dette initiale (DA)</label><input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Date d'ouverture</label><input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Users size={20} /></div>
+              <h2 className="text-xl font-bold text-gray-900">Nouveau Client</h2>
             </div>
-            <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
-              <button onClick={handleCreate} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Créer</button>
+
+            <div className="space-y-6">
+              {/* Identity Section */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Identité</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+                    <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Prénom" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                    <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Société</label>
+                    <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom de la société" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Section */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Contact</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                    <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Téléphone" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@exemple.com" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                    <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Adresse complète" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Section */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Compte</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Limite Crédit (DA)</label>
+                    <input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Crédit initial (DA)</label>
+                    <input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dette initiale (DA)</label>
+                    <input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date d'ouverture</label>
+                    <input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Notes</h3>
+                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Annuler</button>
+              <button onClick={handleCreate} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
             </div>
           </div>
         </div>
