@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { furnitureModelsApi, rawMaterialsApi } from '@/services/api';
 import type { FurnitureModel, RawMaterial, ModelMaterialRequirement } from '@/types';
 import { FurnitureSize, ProductionStep } from '@/types';
-import { Plus, Package, Ruler, Trash2 } from 'lucide-react';
+import { Plus, Package, Ruler, Trash2, Edit2 } from 'lucide-react';
 import { formatDate, getSizeLabel, getStepLabel, getUnitLabel } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
 import { PrintButton } from '@/components/ui/PrintButton';
@@ -19,6 +19,7 @@ export function Models() {
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingModel, setEditingModel] = useState<FurnitureModel | null>(null);
   const [materialRequirements, setMaterialRequirements] = useState<ModelMaterialRequirement[]>([]);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function Models() {
   };
 
   const addMaterialRequirement = (step: ProductionStep) => {
-    setMaterialRequirements(prev => [...prev, { id: 0, modelId: 0, step, materialId: 0, quantity: 0, createdAt: '', updatedAt: '' }]);
+    setMaterialRequirements(prev => [...prev, { id: 0, modelId: 0, step, materialId: 0, quantity: 0, price: 0, createdAt: '', updatedAt: '' }]);
   };
 
   const updateMaterialRequirement = (index: number, field: keyof ModelMaterialRequirement, value: string | number) => {
@@ -59,31 +60,64 @@ export function Models() {
     setMaterialRequirements(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleCreateModel = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitModel = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
-    const loadingToast = toast.loading('Creating furniture model...');
-    
-    try {
-      const validRequirements = materialRequirements
-        .filter(req => req.materialId > 0 && req.quantity > 0)
-        .map(req => ({ step: req.step, materialId: req.materialId, quantity: req.quantity }));
 
-      await furnitureModelsApi.create({
-        name: formData.get('name') as string,
-        description: formData.get('description') as string || undefined,
-        size: formData.get('size') as FurnitureSize,
-        materialRequirements: validRequirements,
-      });
-      toast.success('Furniture model created successfully!', { id: loadingToast });
+    const validRequirements = materialRequirements
+      .filter(req => req.materialId > 0 && req.quantity > 0)
+      .map(req => ({ step: req.step, materialId: req.materialId, quantity: req.quantity, price: req.price || 0 }));
+
+    const data = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string || undefined,
+      size: formData.get('size') as FurnitureSize,
+      materialRequirements: validRequirements,
+    };
+
+    const loadingToast = toast.loading(editingModel ? 'Updating furniture model...' : 'Creating furniture model...');
+
+    try {
+      if (editingModel) {
+        await furnitureModelsApi.update(editingModel.id, data);
+        toast.success('Furniture model updated successfully!', { id: loadingToast });
+      } else {
+        await furnitureModelsApi.create(data);
+        toast.success('Furniture model created successfully!', { id: loadingToast });
+      }
       setShowForm(false);
+      setEditingModel(null);
       setMaterialRequirements([]);
       loadModels();
     } catch (error) {
-      console.error('Failed to create model:', error);
-      toast.error('Failed to create model. Please try again.', { id: loadingToast });
+      console.error('Failed to save model:', error);
+      toast.error('Failed to save model. Please try again.', { id: loadingToast });
     }
+  };
+
+  const handleEditModel = (model: FurnitureModel) => {
+    setEditingModel(model);
+    setMaterialRequirements(model.materialRequirements?.map(req => ({ ...req, price: req.price || 0 })) || []);
+    setShowForm(true);
+  };
+
+  const handleDeleteModel = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this furniture model?')) return;
+    const loadingToast = toast.loading('Deleting furniture model...');
+    try {
+      await furnitureModelsApi.delete(id);
+      toast.success('Furniture model deleted successfully!', { id: loadingToast });
+      loadModels();
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+      toast.error('Failed to delete model. Please try again.', { id: loadingToast });
+    }
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingModel(null);
+    setMaterialRequirements([]);
   };
 
   const printModel = (model: FurnitureModel) => {
@@ -112,7 +146,7 @@ export function Models() {
             Manage furniture product models
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={() => setShowForm(!showForm)}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditingModel(null); setMaterialRequirements([]); setShowForm(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Add Model
         </Button>
@@ -121,15 +155,16 @@ export function Models() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Add New Furniture Model</CardTitle>
+            <CardTitle>{editingModel ? 'Edit Furniture Model' : 'Add New Furniture Model'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleCreateModel} className="space-y-4">
+            <form onSubmit={handleSubmitModel} className="space-y-4">
               <Input
                 label="Model Name"
                 name="name"
                 type="text"
                 required
+                defaultValue={editingModel?.name || ''}
                 placeholder="e.g., Oak Dining Table, Modern Sofa"
                 helperText="Enter a descriptive name for the furniture model"
               />
@@ -137,6 +172,7 @@ export function Models() {
                 label="Size"
                 name="size"
                 required
+                defaultValue={editingModel?.size || ''}
                 helperText="Select the furniture size"
               >
                 <option value="">Select size...</option>
@@ -150,6 +186,7 @@ export function Models() {
                 label="Description"
                 name="description"
                 rows={3}
+                defaultValue={editingModel?.description || ''}
                 placeholder="Describe the furniture model..."
                 helperText="Optional: Add details about materials, dimensions, or features"
               />
@@ -209,6 +246,16 @@ export function Models() {
                                     required
                                   />
                                 </div>
+                                <div className="w-28">
+                                  <label className="block text-xs text-gray-600 mb-1">Price</label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={req.price || ''}
+                                    onChange={(e) => updateMaterialRequirement(globalIndex, 'price', parseFloat(e.target.value) || 0)}
+                                  />
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => removeMaterialRequirement(globalIndex)}
@@ -228,10 +275,10 @@ export function Models() {
               </div>
 
               <div className="flex justify-end space-x-3">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button type="button" variant="outline" onClick={handleCancelForm}>
                   Cancel
                 </Button>
-                <Button type="submit">Add Model</Button>
+                <Button type="submit">{editingModel ? 'Update Model' : 'Add Model'}</Button>
               </div>
             </form>
           </CardContent>
@@ -259,6 +306,24 @@ export function Models() {
                     </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleEditModel(model)}
+                    className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
+                    title="Edit"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteModel(model.id)}
+                    className="p-2 rounded-md text-red-600 hover:bg-red-50"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -280,7 +345,7 @@ export function Models() {
                           <ul className="text-xs text-gray-600 space-y-0.5">
                             {stepReqs.map(req => (
                               <li key={req.id}>
-                                {req.material?.name || 'Unknown'} — {req.quantity} {getUnitLabel(req.material?.unit || '')}
+                                {req.material?.name || 'Unknown'} — {req.quantity} {getUnitLabel(req.material?.unit || '')} @ {req.price?.toLocaleString('fr-DZ', { style: 'currency', currency: 'DZD' }) || '0 DZD'}
                               </li>
                             ))}
                           </ul>

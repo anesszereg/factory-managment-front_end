@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { 
   FurnitureModel, 
   ProductionOrder, 
+  ProductionOrderWorker,
   DailyProduction, 
   RawMaterial, 
   MaterialPurchase, 
@@ -53,13 +54,13 @@ export const furnitureModelsApi = {
     name: string;
     description?: string;
     size: string;
-    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+    materialRequirements?: { step: string; materialId: number; quantity: number; price?: number }[];
   }) => api.post<FurnitureModel>('/furniture-models', data),
   update: (id: number, data: {
     name?: string;
     description?: string;
     size?: string;
-    materialRequirements?: { step: string; materialId: number; quantity: number }[];
+    materialRequirements?: { step: string; materialId: number; quantity: number; price?: number }[];
   }) => api.put<FurnitureModel>(`/furniture-models/${id}`, data),
   delete: (id: number) => api.delete(`/furniture-models/${id}`),
 };
@@ -76,6 +77,25 @@ export const productionOrdersApi = {
     api.patch<ProductionOrder>(`/production-orders/${id}/status`, { status }),
   delete: (id: number) => api.delete(`/production-orders/${id}`),
   getProgress: (id: number) => api.get(`/production-orders/${id}/progress`),
+};
+
+export const productionOrderWorkersApi = {
+  getByOrderId: (orderId: number) =>
+    api.get<ProductionOrderWorker[]>(`/production-order-workers/order/${orderId}`),
+  create: (data: {
+    orderId: number;
+    employeeId?: number;
+    pieceWorkerId?: number;
+    cost?: number;
+    notes?: string;
+  }) => api.post<ProductionOrderWorker>('/production-order-workers', data),
+  update: (id: number, data: {
+    employeeId?: number;
+    pieceWorkerId?: number;
+    cost?: number;
+    notes?: string;
+  }) => api.put<ProductionOrderWorker>(`/production-order-workers/${id}`, data),
+  delete: (id: number) => api.delete(`/production-order-workers/${id}`),
 };
 
 export const dailyProductionApi = {
@@ -95,6 +115,7 @@ export const dailyProductionApi = {
     quantityCompleted: number;
     quantityLost?: number;
     notes?: string;
+    colorSplits?: { color: string; quantity: number }[];
   }) => api.post<DailyProduction>('/daily-production', data),
   update: (id: number, data: {
     quantityEntered?: number;
@@ -333,6 +354,7 @@ export const dailyPieceReceiptsApi = {
     paidAmount?: number;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.post<DailyPieceReceipt>('/daily-piece-receipts', data),
   update: (id: number, data: {
     date?: string;
@@ -340,9 +362,10 @@ export const dailyPieceReceiptsApi = {
     paidAmount?: number;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.put<DailyPieceReceipt>(`/daily-piece-receipts/${id}`, data),
-  addPayment: (id: number, amount: number, createExpense?: boolean) => 
-    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount, createExpense }),
+  addPayment: (id: number, amount: number, createExpense?: boolean, moneyBoxId?: number) => 
+    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount, createExpense, moneyBoxId }),
   delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
   getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
     api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),
@@ -359,6 +382,9 @@ export const suppliersApi = {
     phone?: string;
     address?: string;
     notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
     status?: SupplierStatus;
   }) => api.post<Supplier>('/suppliers', data),
   update: (id: number, data: {
@@ -366,6 +392,9 @@ export const suppliersApi = {
     phone?: string;
     address?: string;
     notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
     status?: SupplierStatus;
   }) => api.put<Supplier>(`/suppliers/${id}`, data),
   delete: (id: number) => api.delete(`/suppliers/${id}`),
@@ -441,8 +470,19 @@ export const financialTransactionApi = {
 export const clientApi = {
   getAll: (params?: { status?: string }) => api.get<Client[]>('/clients', { params }),
   getById: (id: number) => api.get<Client>(`/clients/${id}`),
-  create: (data: { firstName: string; lastName: string; company?: string; phone?: string; email?: string; address?: string; creditLimit?: number; notes?: string; openingBalance?: number }) =>
-    api.post<Client>('/clients', data),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    creditLimit?: number;
+    notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
+  }) => api.post<Client>('/clients', data),
   update: (id: number, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data),
   delete: (id: number) => api.delete(`/clients/${id}`),
   getLedger: (id: number) => api.get<ClientTransaction[]>(`/clients/${id}/ledger`),

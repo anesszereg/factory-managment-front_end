@@ -40,6 +40,7 @@ export interface ModelMaterialRequirement {
   step: ProductionStep;
   materialId: number;
   quantity: number;
+  price: number;
   createdAt: string;
   updatedAt: string;
   material?: RawMaterial;
@@ -55,6 +56,27 @@ export interface FurnitureModel {
   materialRequirements?: ModelMaterialRequirement[];
 }
 
+export interface ProductionOrderWorker {
+  id: number;
+  orderId: number;
+  employeeId?: number;
+  pieceWorkerId?: number;
+  cost: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  employee?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  pieceWorker?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+}
+
 export interface ProductionOrder {
   id: number;
   modelId: number;
@@ -64,6 +86,20 @@ export interface ProductionOrder {
   createdAt: string;
   updatedAt: string;
   model?: FurnitureModel;
+  workers?: ProductionOrderWorker[];
+  materialCost?: number;
+  pieceWorkerCost?: number;
+  laborCost?: number;
+  totalCost?: number;
+}
+
+export interface ProductionColorSplit {
+  id: number;
+  dailyProductionId: number;
+  color: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DailyProduction {
@@ -75,6 +111,7 @@ export interface DailyProduction {
   quantityCompleted: number;
   quantityLost: number;
   notes?: string;
+  colorSplits?: ProductionColorSplit[];
   createdAt: string;
   updatedAt: string;
   order?: ProductionOrder;
@@ -368,6 +405,8 @@ export interface SupplierSummary {
   totalAmount: number;
   totalPaid: number;
   totalRemaining: number;
+  openingCredit: number;
+  openingDebt: number;
   pendingOrders: number;
   partialOrders: number;
   completedOrders: number;
@@ -495,6 +534,9 @@ export interface Client {
   address?: string;
   creditLimit: number;
   outstandingBalance: number;
+  openingCredit?: number;
+  openingDebt?: number;
+  openingBalanceDate?: string;
   notes?: string;
   status: ClientStatus;
   createdAt: string;

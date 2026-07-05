@@ -4,8 +4,8 @@ import toast from 'react-hot-toast';
 import { Plus, Users, Receipt, DollarSign, Calendar, Edit2, Trash2, Printer, X, CreditCard, Eye, Download, Search, UserCircle, TrendingUp, Wallet, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { printDocument } from '../lib/print';
-import { pieceWorkersApi, dailyPieceReceiptsApi } from '../services/api';
-import { PieceWorker, PieceWorkerStatus, DailyPieceReceipt, PaymentStatus } from '../types';
+import { pieceWorkersApi, dailyPieceReceiptsApi, moneyBoxApi } from '../services/api';
+import { PieceWorker, PieceWorkerStatus, DailyPieceReceipt, PaymentStatus, MoneyBox } from '../types';
 import { Textarea } from '../components/ui/Textarea';
 
 interface ReceiptItemForm {
@@ -31,6 +31,7 @@ const formatCurrency = (amount: number) => {
 export default function PieceWorkers() {
   const [workers, setWorkers] = useState<PieceWorker[]>([]);
   const [receipts, setReceipts] = useState<DailyPieceReceipt[]>([]);
+  const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWorkerForm, setShowWorkerForm] = useState(false);
   const [showReceiptForm, setShowReceiptForm] = useState(false);
@@ -58,16 +59,19 @@ export default function PieceWorkers() {
     paidAmount: 0,
     notes: '',
     createExpense: true,
+    moneyBoxId: 0,
   });
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentReceiptId, setPaymentReceiptId] = useState<number | null>(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentCreateExpense, setPaymentCreateExpense] = useState(true);
+  const [paymentMoneyBoxId, setPaymentMoneyBoxId] = useState<number>(0);
   const [showWorkerSummary, setShowWorkerSummary] = useState(false);
   const [summaryWorker, setSummaryWorker] = useState<PieceWorker | null>(null);
   const [showWorkerPaymentDialog, setShowWorkerPaymentDialog] = useState(false);
   const [workerPaymentAmount, setWorkerPaymentAmount] = useState(0);
   const [workerPaymentCreateExpense, setWorkerPaymentCreateExpense] = useState(true);
+  const [workerPaymentMoneyBoxId, setWorkerPaymentMoneyBoxId] = useState<number>(0);
   const [lastWorkerPayment, setLastWorkerPayment] = useState<{
     worker: PieceWorker;
     amount: number;
@@ -92,12 +96,14 @@ export default function PieceWorkers() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [workersRes, receiptsRes] = await Promise.all([
+      const [workersRes, receiptsRes, boxesRes] = await Promise.all([
         pieceWorkersApi.getAll(filterStatus ? { status: filterStatus } : undefined),
         dailyPieceReceiptsApi.getAll(),
+        moneyBoxApi.getAll(),
       ]);
       setWorkers(workersRes.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setReceipts(receiptsRes.data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setMoneyBoxes(boxesRes.data);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -158,8 +164,9 @@ export default function PieceWorkers() {
         paidAmount: receiptFormData.paidAmount,
         notes: receiptFormData.notes,
         createExpense: receiptFormData.createExpense,
+        moneyBoxId: receiptFormData.moneyBoxId || undefined,
       };
-      
+
       if (editingReceipt) {
         await dailyPieceReceiptsApi.update(editingReceipt.id, data);
         toast.success('Receipt updated successfully', { id: loadingToast });
@@ -175,16 +182,17 @@ export default function PieceWorkers() {
   };
 
   const handleAddPayment = async () => {
-    if (!paymentReceiptId || paymentAmount <= 0) return;
-    
+    if (!paymentReceiptId || paymentAmount <= 0 || !paymentMoneyBoxId) return;
+
     const loadingToast = toast.loading('Adding payment...');
     try {
-      await dailyPieceReceiptsApi.addPayment(paymentReceiptId, paymentAmount, paymentCreateExpense);
+      await dailyPieceReceiptsApi.addPayment(paymentReceiptId, paymentAmount, paymentCreateExpense, paymentMoneyBoxId);
       toast.success('Payment added successfully', { id: loadingToast });
       setShowPaymentDialog(false);
       setPaymentReceiptId(null);
       setPaymentAmount(0);
       setPaymentCreateExpense(true);
+      setPaymentMoneyBoxId(0);
       fetchReceipts();
     } catch (error) {
       toast.error('Failed to add payment', { id: loadingToast });
@@ -264,8 +272,8 @@ export default function PieceWorkers() {
 
   // Handle worker payment - distributes payment across unpaid receipts
   const handleWorkerPayment = async () => {
-    if (!selectedWorker || workerPaymentAmount <= 0) return;
-    
+    if (!selectedWorker || workerPaymentAmount <= 0 || !workerPaymentMoneyBoxId) return;
+
     const balance = getSelectedWorkerBalance();
     if (workerPaymentAmount > balance.totalRemaining) {
       toast.error(`Payment amount exceeds remaining balance of ${formatCurrency(balance.totalRemaining)}`);
@@ -273,31 +281,28 @@ export default function PieceWorkers() {
     }
 
     const loadingToast = toast.loading('Processing payment...');
-    
+
     try {
       let remainingPayment = workerPaymentAmount;
       const paidReceipts: { id: number; amount: number }[] = [];
-      
-      // Sort unpaid receipts by date (oldest first)
+
       const sortedUnpaid = [...balance.unpaidReceipts].sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       );
-      
-      // Distribute payment across receipts
+
       for (const receipt of sortedUnpaid) {
         if (remainingPayment <= 0) break;
-        
+
         const receiptRemaining = receipt.totalAmount - receipt.paidAmount;
         const paymentForReceipt = Math.min(remainingPayment, receiptRemaining);
-        
+
         if (paymentForReceipt > 0) {
-          await dailyPieceReceiptsApi.addPayment(receipt.id, paymentForReceipt, workerPaymentCreateExpense);
+          await dailyPieceReceiptsApi.addPayment(receipt.id, paymentForReceipt, workerPaymentCreateExpense, workerPaymentMoneyBoxId);
           paidReceipts.push({ id: receipt.id, amount: paymentForReceipt });
           remainingPayment -= paymentForReceipt;
         }
       }
-      
-      // Store payment info for receipt
+
       setLastWorkerPayment({
         worker: selectedWorker,
         amount: workerPaymentAmount,
@@ -306,9 +311,10 @@ export default function PieceWorkers() {
         newBalance: balance.totalRemaining - workerPaymentAmount,
         paidReceipts,
       });
-      
+
       toast.success('Payment processed successfully', { id: loadingToast });
       setShowWorkerPaymentDialog(false);
+      setWorkerPaymentMoneyBoxId(0);
       setWorkerPaymentCreateExpense(true);
       setShowPaymentReceipt(true);
       fetchReceipts();
@@ -602,6 +608,7 @@ export default function PieceWorkers() {
       paidAmount: receipt.paidAmount,
       notes: receipt.notes || '',
       createExpense: !!receipt.expenseId,
+      moneyBoxId: receipt.expense?.moneyBoxId || 0,
     });
     setShowReceiptForm(true);
   };
@@ -626,6 +633,7 @@ export default function PieceWorkers() {
       paidAmount: 0,
       notes: '',
       createExpense: true,
+      moneyBoxId: 0,
     });
     setEditingReceipt(null);
     setShowReceiptForm(false);
@@ -640,6 +648,7 @@ export default function PieceWorkers() {
       paidAmount: 0,
       notes: '',
       createExpense: true,
+      moneyBoxId: 0,
     });
     setShowReceiptForm(true);
   };
@@ -1746,6 +1755,21 @@ export default function PieceWorkers() {
                 Also record payment as expense
               </label>
             </div>
+            {receiptFormData.createExpense && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
+                <Select
+                  value={receiptFormData.moneyBoxId.toString()}
+                  onChange={(e) => setReceiptFormData({ ...receiptFormData, moneyBoxId: parseInt(e.target.value) || 0 })}
+                  required
+                >
+                  <option value="">Select a money box...</option>
+                  {moneyBoxes.map(box => (
+                    <option key={box.id} value={box.id}>{box.name} ({formatCurrency(box.currentBalance)})</option>
+                  ))}
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button type="button" variant="outline" onClick={resetReceiptForm}>
                 Cancel
@@ -1784,6 +1808,21 @@ export default function PieceWorkers() {
                 Also record payment as expense
               </label>
             </div>
+            {paymentCreateExpense && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
+                <Select
+                  value={paymentMoneyBoxId.toString()}
+                  onChange={(e) => setPaymentMoneyBoxId(parseInt(e.target.value) || 0)}
+                  required
+                >
+                  <option value="">Select a money box...</option>
+                  {moneyBoxes.map(box => (
+                    <option key={box.id} value={box.id}>{box.name} ({formatCurrency(box.currentBalance)})</option>
+                  ))}
+                </Select>
+              </div>
+            )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
                 Cancel
@@ -2009,6 +2048,22 @@ export default function PieceWorkers() {
                     Also record payment as expense
                   </label>
                 </div>
+
+                {workerPaymentCreateExpense && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
+                    <Select
+                      value={workerPaymentMoneyBoxId.toString()}
+                      onChange={(e) => setWorkerPaymentMoneyBoxId(parseInt(e.target.value) || 0)}
+                      required
+                    >
+                      <option value="">Select a money box...</option>
+                      {moneyBoxes.map(box => (
+                        <option key={box.id} value={box.id}>{box.name} ({formatCurrency(box.currentBalance)})</option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" onClick={() => setShowWorkerPaymentDialog(false)} className="flex-1">
