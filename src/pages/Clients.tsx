@@ -14,7 +14,8 @@ export default function ClientsPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: '' });
+  const today = new Date().toISOString().split('T')[0];
+  const [form, setForm] = useState({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: today });
   const [paymentForm, setPaymentForm] = useState({ moneyBoxId: 0, date: new Date().toISOString().split('T')[0], amount: 0, paymentMethod: 'CASH', reference: '', notes: '' });
 
   const loadAll = async () => {
@@ -42,7 +43,7 @@ export default function ClientsPage() {
     try {
       await clientApi.create(form);
       setShowForm(false);
-      setForm({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: '' });
+      setForm({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: today });
       loadAll();
     } catch (e) { console.error(e); }
   };
@@ -282,16 +283,16 @@ export default function ClientsPage() {
 
       {/* Create Client Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="p-5 border-b">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] my-auto">
+            <div className="p-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Users size={20} /></div>
                 <h2 className="text-lg font-bold text-gray-900">Nouveau Client</h2>
               </div>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-5">
+            <div className="p-4 overflow-y-auto space-y-4">
               {/* Identity Section */}
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Identité</h3>
@@ -356,11 +357,11 @@ export default function ClientsPage() {
               {/* Notes Section */}
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
+                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={1} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-xl">
+            <div className="flex justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-xl">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm font-medium text-gray-700 hover:bg-white">Annuler</button>
               <button onClick={handleCreate} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
             </div>
