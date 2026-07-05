@@ -56,6 +56,27 @@ export interface FurnitureModel {
   materialRequirements?: ModelMaterialRequirement[];
 }
 
+export interface ProductionOrderWorker {
+  id: number;
+  orderId: number;
+  employeeId?: number;
+  pieceWorkerId?: number;
+  cost: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  employee?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  pieceWorker?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+}
+
 export interface ProductionOrder {
   id: number;
   modelId: number;
@@ -65,6 +86,11 @@ export interface ProductionOrder {
   createdAt: string;
   updatedAt: string;
   model?: FurnitureModel;
+  workers?: ProductionOrderWorker[];
+  materialCost?: number;
+  pieceWorkerCost?: number;
+  laborCost?: number;
+  totalCost?: number;
 }
 
 export interface ProductionColorSplit {

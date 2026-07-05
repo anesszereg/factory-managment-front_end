@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import { productionOrdersApi, dailyProductionApi, furnitureModelsApi } from '@/services/api';
-import type { ProductionOrder, DailyProduction, FurnitureModel } from '@/types';
+import { productionOrdersApi, dailyProductionApi, furnitureModelsApi, productionOrderWorkersApi, employeesApi, pieceWorkersApi } from '@/services/api';
+import type { ProductionOrder, DailyProduction, FurnitureModel, Employee, PieceWorker, ProductionOrderWorker } from '@/types';
 import { ProductionStatus, ProductionStep } from '@/types';
 import { Plus, CheckCircle2, Clock, ArrowDown, Package, Edit2, Trash2, TrendingUp, AlertTriangle, Factory, ChevronRight, Layers, BarChart3 } from 'lucide-react';
 import { formatDate, getStepLabel } from '@/lib/utils';
@@ -26,6 +26,9 @@ export function Production() {
   const [editingProduction, setEditingProduction] = useState<DailyProduction | null>(null);
   const [colorSplits, setColorSplits] = useState<{ color: string; quantity: number }[]>([]);
   const [selectedStep, setSelectedStep] = useState<ProductionStep | ''>('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [pieceWorkers, setPieceWorkers] = useState<PieceWorker[]>([]);
+  const [orderWorkers, setOrderWorkers] = useState<ProductionOrderWorker[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -37,15 +40,22 @@ export function Production() {
 
   const loadData = async () => {
     try {
-      const [ordersRes, modelsRes, productionRes] = await Promise.all([
+      const [ordersRes, modelsRes, productionRes, employeesRes, pieceWorkersRes] = await Promise.all([
         productionOrdersApi.getAll(),
         furnitureModelsApi.getAll(),
         dailyProductionApi.getAll(),
+        employeesApi.getAll(),
+        pieceWorkersApi.getAll(),
       ]);
       setOrders(ordersRes.data);
       setModels(modelsRes.data);
       setDailyProduction(productionRes.data);
-      if (ordersRes.data.length > 0 && !selectedOrder) {
+      setEmployees(employeesRes.data);
+      setPieceWorkers(pieceWorkersRes.data);
+      if (selectedOrder) {
+        const updated = ordersRes.data.find(o => o.id === selectedOrder.id);
+        if (updated) setSelectedOrder(updated);
+      } else if (ordersRes.data.length > 0) {
         setSelectedOrder(ordersRes.data[0]);
       }
     } catch (error) {
@@ -170,6 +180,63 @@ export function Production() {
 
   const removeColorSplit = (index: number) => {
     setColorSplits(prev => prev.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    if (selectedOrder) {
+      loadOrderWorkers(selectedOrder.id);
+    } else {
+      setOrderWorkers([]);
+    }
+  }, [selectedOrder?.id]);
+
+  const loadOrderWorkers = async (orderId: number) => {
+    try {
+      const res = await productionOrderWorkersApi.getByOrderId(orderId);
+      setOrderWorkers(res.data);
+    } catch (error) {
+      console.error('Failed to load order workers:', error);
+    }
+  };
+
+  const addOrderWorker = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+    const formData = new FormData(e.currentTarget);
+    const type = formData.get('workerType') as 'employee' | 'pieceWorker';
+    const workerId = parseInt(formData.get('workerId') as string);
+    const cost = parseFloat(formData.get('cost') as string) || 0;
+    const notes = formData.get('notes') as string || undefined;
+
+    try {
+      await productionOrderWorkersApi.create({
+        orderId: selectedOrder.id,
+        employeeId: type === 'employee' ? workerId : undefined,
+        pieceWorkerId: type === 'pieceWorker' ? workerId : undefined,
+        cost,
+        notes,
+      });
+      toast.success('Worker added to order');
+      await loadOrderWorkers(selectedOrder.id);
+      loadData();
+      (e.target as HTMLFormElement).reset();
+    } catch (error) {
+      console.error('Failed to add worker:', error);
+      toast.error('Failed to add worker');
+    }
+  };
+
+  const deleteOrderWorker = async (id: number) => {
+    if (!confirm('Are you sure you want to remove this worker from the order?')) return;
+    try {
+      await productionOrderWorkersApi.delete(id);
+      toast.success('Worker removed');
+      if (selectedOrder) await loadOrderWorkers(selectedOrder.id);
+      loadData();
+    } catch (error) {
+      console.error('Failed to remove worker:', error);
+      toast.error('Failed to remove worker');
+    }
   };
 
   const openProductionForm = (production: DailyProduction | null = null, orderId?: number, step?: ProductionStep) => {
@@ -1111,6 +1178,108 @@ export function Production() {
                     </div>
                   );
                 })}
+
+                {/* Cost Summary & Workers */}
+                <div className="mt-6 border rounded-xl p-5 bg-gray-50/70 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-indigo-600" />
+                      Production Cost
+                    </h3>
+                    <span className="text-lg font-bold text-indigo-700">
+                      {new Intl.NumberFormat('en-DZ', { style: 'currency', currency: 'DZD' }).format(selectedOrder.totalCost || 0)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white p-3 rounded-lg border text-center">
+                      <p className="text-xs text-gray-500 mb-1">Materials</p>
+                      <p className="font-semibold text-gray-900">{new Intl.NumberFormat('en-DZ', { style: 'currency', currency: 'DZD' }).format(selectedOrder.materialCost || 0)}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border text-center">
+                      <p className="text-xs text-gray-500 mb-1">Piece Workers</p>
+                      <p className="font-semibold text-gray-900">{new Intl.NumberFormat('en-DZ', { style: 'currency', currency: 'DZD' }).format(selectedOrder.pieceWorkerCost || 0)}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border text-center">
+                      <p className="text-xs text-gray-500 mb-1">Employees</p>
+                      <p className="font-semibold text-gray-900">{new Intl.NumberFormat('en-DZ', { style: 'currency', currency: 'DZD' }).format(selectedOrder.laborCost || 0)}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Assigned Workers</h4>
+                    <form onSubmit={addOrderWorker} className="flex flex-wrap items-end gap-2 mb-4">
+                      <div className="w-32">
+                        <label className="block text-xs text-gray-600 mb-1">Type</label>
+                        <Select name="workerType" required>
+                          <option value="">Select</option>
+                          <option value="employee">Employee</option>
+                          <option value="pieceWorker">Piece Worker</option>
+                        </Select>
+                      </div>
+                      <div className="flex-1 min-w-[140px]">
+                        <label className="block text-xs text-gray-600 mb-1">Worker</label>
+                        <Select name="workerId" required>
+                          <option value="">Select worker</option>
+                          <optgroup label="Employees">
+                            {employees.map(emp => (
+                              <option key={`emp-${emp.id}`} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Piece Workers">
+                            {pieceWorkers.map(pw => (
+                              <option key={`pw-${pw.id}`} value={pw.id}>{pw.firstName} {pw.lastName}</option>
+                            ))}
+                          </optgroup>
+                        </Select>
+                      </div>
+                      <div className="w-28">
+                        <label className="block text-xs text-gray-600 mb-1">Cost</label>
+                        <Input type="number" name="cost" min="0" step="0.01" placeholder="0.00" required />
+                      </div>
+                      <div className="flex-1 min-w-[140px]">
+                        <label className="block text-xs text-gray-600 mb-1">Notes</label>
+                        <Input type="text" name="notes" placeholder="Optional" />
+                      </div>
+                      <Button type="submit" size="sm">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    </form>
+
+                    {orderWorkers.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">No workers assigned yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {orderWorkers.map(worker => (
+                          <div key={worker.id} className="flex items-center justify-between bg-white p-3 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${worker.employeeId ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                                {worker.employeeId ? 'Employee' : 'Piece Worker'}
+                              </span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {worker.employee?.firstName} {worker.employee?.lastName}
+                                {worker.pieceWorker?.firstName} {worker.pieceWorker?.lastName}
+                              </span>
+                              {worker.notes && <span className="text-xs text-gray-500">{worker.notes}</span>}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {new Intl.NumberFormat('en-DZ', { style: 'currency', currency: 'DZD' }).format(worker.cost)}
+                              </span>
+                              <button
+                                onClick={() => deleteOrderWorker(worker.id)}
+                                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                                title="Remove"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-center py-16 text-gray-400">
