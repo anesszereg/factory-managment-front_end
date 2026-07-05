@@ -14,7 +14,7 @@ export default function ClientsPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingBalance: 0 });
+  const [form, setForm] = useState({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: '' });
   const [paymentForm, setPaymentForm] = useState({ moneyBoxId: 0, date: new Date().toISOString().split('T')[0], amount: 0, paymentMethod: 'CASH', reference: '', notes: '' });
 
   const loadAll = async () => {
@@ -42,7 +42,7 @@ export default function ClientsPage() {
     try {
       await clientApi.create(form);
       setShowForm(false);
-      setForm({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingBalance: 0 });
+      setForm({ firstName: '', lastName: '', company: '', phone: '', email: '', address: '', creditLimit: 0, notes: '', openingCredit: 0, openingDebt: 0, openingBalanceDate: '' });
       loadAll();
     } catch (e) { console.error(e); }
   };
@@ -194,8 +194,10 @@ export default function ClientsPage() {
               <div><label className="text-sm font-medium text-gray-700">Email</label><input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div><label className="text-sm font-medium text-gray-700">Limite Crédit (DA)</label><input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Adresse</label><input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Solde initial (DA)</label><input type="number" value={form.openingBalance} onChange={e => setForm(p => ({ ...p, openingBalance: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Crédit initial (DA)</label><input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Dette initiale (DA)</label><input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Date d'ouverture</label><input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div className="col-span-2"><label className="text-sm font-medium text-gray-700">Notes</label><input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>

@@ -534,6 +534,9 @@ export interface Client {
   address?: string;
   creditLimit: number;
   outstandingBalance: number;
+  openingCredit?: number;
+  openingDebt?: number;
+  openingBalanceDate?: string;
   notes?: string;
   status: ClientStatus;
   createdAt: string;

@@ -468,8 +468,19 @@ export const financialTransactionApi = {
 export const clientApi = {
   getAll: (params?: { status?: string }) => api.get<Client[]>('/clients', { params }),
   getById: (id: number) => api.get<Client>(`/clients/${id}`),
-  create: (data: { firstName: string; lastName: string; company?: string; phone?: string; email?: string; address?: string; creditLimit?: number; notes?: string; openingBalance?: number }) =>
-    api.post<Client>('/clients', data),
+  create: (data: {
+    firstName: string;
+    lastName: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    creditLimit?: number;
+    notes?: string;
+    openingCredit?: number;
+    openingDebt?: number;
+    openingBalanceDate?: string;
+  }) => api.post<Client>('/clients', data),
   update: (id: number, data: Partial<Client>) => api.put<Client>(`/clients/${id}`, data),
   delete: (id: number) => api.delete(`/clients/${id}`),
   getLedger: (id: number) => api.get<ClientTransaction[]>(`/clients/${id}/ledger`),
