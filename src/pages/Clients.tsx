@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Search, Phone, Mail, Building2, Trash2, Eye, CreditCard, TrendingDown } from 'lucide-react';
+import { Plus, Users, Search, Phone, Mail, Building2, Trash2, Eye, CreditCard, TrendingDown, MapPin, Calendar, Wallet, FileText, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { clientApi, moneyBoxApi } from '../services/api';
 import type { Client, ClientTransaction, MoneyBox } from '../types';
 import { ClientStatus } from '../types';
@@ -91,9 +91,34 @@ export default function ClientsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border p-5"><p className="text-sm text-gray-500">Total Clients</p><p className="text-2xl font-bold mt-1 text-gray-900">{clients.length}</p><p className="text-xs text-gray-400 mt-1">{activeCount} actifs</p></div>
-        <div className="bg-white rounded-xl border p-5"><p className="text-sm text-gray-500">Créances Totales</p><p className="text-2xl font-bold mt-1 text-orange-600">{totalOutstanding.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p></div>
-        <div className="bg-white rounded-xl border p-5"><p className="text-sm text-gray-500">Clients avec Solde</p><p className="text-2xl font-bold mt-1 text-red-600">{clients.filter(c => c.outstandingBalance > 0).length}</p></div>
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-blue-100">Total Clients</p>
+              <p className="text-3xl font-bold mt-1">{clients.length}</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg"><Users size={20} /></div>
+          </div>
+          <p className="text-xs text-blue-100 mt-2">{activeCount} actifs</p>
+        </div>
+        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-5 text-white shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-orange-100">Créances Totales</p>
+              <p className="text-3xl font-bold mt-1">{totalOutstanding.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg"><Wallet size={20} /></div>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-red-400 to-rose-500 rounded-2xl p-5 text-white shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-red-100">Clients avec Solde</p>
+              <p className="text-3xl font-bold mt-1">{clients.filter(c => c.outstandingBalance > 0).length}</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg"><CreditCard size={20} /></div>
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-6">
@@ -108,19 +133,23 @@ export default function ClientsPage() {
           {loading ? <p className="text-center py-8 text-gray-400">Chargement...</p> : (
             <div className="divide-y">
               {filtered.map(c => (
-                <div key={c.id} onClick={() => handleSelectClient(c)} className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedClient?.id === c.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}>
-                  <div className="flex justify-between items-start">
+                <div key={c.id} onClick={() => handleSelectClient(c)} className={`p-4 cursor-pointer transition-all hover:shadow-md ${selectedClient?.id === c.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-600' : 'hover:bg-gray-50 border-b'}`}>
+                  <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">{c.firstName[0]}{c.lastName[0]}</div>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${selectedClient?.id === c.id ? 'bg-blue-600 text-white' : 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700'}`}>
+                        {c.firstName[0]}{c.lastName[0]}
+                      </div>
                       <div>
-                        <p className="font-medium text-gray-900">{c.firstName} {c.lastName}</p>
-                        {c.company && <p className="text-xs text-gray-400 flex items-center gap-1"><Building2 size={10} /> {c.company}</p>}
-                        {c.phone && <p className="text-xs text-gray-400">{c.phone}</p>}
+                        <p className="font-semibold text-gray-900">{c.firstName} {c.lastName}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          {c.company && <span className="flex items-center gap-1"><Building2 size={10} /> {c.company}</span>}
+                          {c.phone && <span className="flex items-center gap-1"><Phone size={10} /> {c.phone}</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className={`text-sm font-bold ${c.outstandingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>{c.outstandingBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === ClientStatus.ACTIVE ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{c.status === ClientStatus.ACTIVE ? 'Actif' : 'Inactif'}</span>
+                      <span className={`text-[10px] px-2 py-0.5 font-medium rounded-full ${c.status === ClientStatus.ACTIVE ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{c.status === ClientStatus.ACTIVE ? 'Actif' : 'Inactif'}</span>
                     </div>
                   </div>
                 </div>
@@ -132,49 +161,119 @@ export default function ClientsPage() {
 
         {/* Client Detail */}
         {selectedClient && (
-          <div className="w-96 space-y-4">
-            <div className="bg-white rounded-xl border p-5 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">{selectedClient.firstName} {selectedClient.lastName}</h2>
-                  {selectedClient.company && <p className="text-sm text-gray-500">{selectedClient.company}</p>}
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => handleToggleStatus(selectedClient)} className="p-1.5 text-gray-400 hover:text-yellow-500 border rounded"><Eye size={14} /></button>
-                  <button onClick={() => handleDelete(selectedClient.id)} className="p-1.5 text-gray-400 hover:text-red-500 border rounded"><Trash2 size={14} /></button>
+          <div className="w-[420px] space-y-4">
+            {/* Profile Card */}
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-xl border-2 border-white/30">
+                      {selectedClient.firstName[0]}{selectedClient.lastName[0]}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{selectedClient.firstName} {selectedClient.lastName}</h2>
+                      {selectedClient.company && <p className="text-sm text-blue-100 flex items-center gap-1"><Building2 size={12} /> {selectedClient.company}</p>}
+                      <span className={`inline-flex mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-full ${selectedClient.status === ClientStatus.ACTIVE ? 'bg-green-400/20 text-green-100' : 'bg-gray-400/20 text-gray-200'}`}>
+                        {selectedClient.status === ClientStatus.ACTIVE ? 'Actif' : 'Inactif'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleToggleStatus(selectedClient)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Toggle status"><Eye size={14} /></button>
+                    <button onClick={() => handleDelete(selectedClient.id)} className="p-1.5 text-white/70 hover:text-red-200 hover:bg-white/10 rounded-lg transition-colors" title="Delete"><Trash2 size={14} /></button>
+                  </div>
                 </div>
               </div>
-              {selectedClient.phone && <p className="text-sm flex items-center gap-2 text-gray-600"><Phone size={14} />{selectedClient.phone}</p>}
-              {selectedClient.email && <p className="text-sm flex items-center gap-2 text-gray-600"><Mail size={14} />{selectedClient.email}</p>}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                <div><p className="text-xs text-gray-400">Créance</p><p className={`text-lg font-bold ${selectedClient.outstandingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>{selectedClient.outstandingBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p></div>
-                <div><p className="text-xs text-gray-400">Limite Crédit</p><p className="text-lg font-bold text-gray-700">{selectedClient.creditLimit.toLocaleString('fr-FR')} DA</p></div>
+
+              <div className="p-5 space-y-4">
+                {/* Contact Details */}
+                <div className="grid grid-cols-1 gap-2">
+                  {selectedClient.phone && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                      <div className="p-1.5 bg-blue-100 text-blue-600 rounded-md"><Phone size={14} /></div>
+                      <div><p className="text-xs text-gray-500">Téléphone</p><p className="text-sm font-medium text-gray-900">{selectedClient.phone}</p></div>
+                    </div>
+                  )}
+                  {selectedClient.email && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                      <div className="p-1.5 bg-purple-100 text-purple-600 rounded-md"><Mail size={14} /></div>
+                      <div><p className="text-xs text-gray-500">Email</p><p className="text-sm font-medium text-gray-900">{selectedClient.email}</p></div>
+                    </div>
+                  )}
+                  {selectedClient.address && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                      <div className="p-1.5 bg-orange-100 text-orange-600 rounded-md"><MapPin size={14} /></div>
+                      <div><p className="text-xs text-gray-500">Adresse</p><p className="text-sm font-medium text-gray-900">{selectedClient.address}</p></div>
+                    </div>
+                  )}
+                  {selectedClient.openingBalanceDate && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50/70">
+                      <div className="p-1.5 bg-teal-100 text-teal-600 rounded-md"><Calendar size={14} /></div>
+                      <div><p className="text-xs text-gray-500">Date d'ouverture</p><p className="text-sm font-medium text-gray-900">{new Date(selectedClient.openingBalanceDate).toLocaleDateString('fr-FR')}</p></div>
+                    </div>
+                  )}
+                  {selectedClient.notes && (
+                    <div className="flex items-start gap-3 p-2 rounded-lg bg-gray-50/70">
+                      <div className="p-1.5 bg-gray-200 text-gray-600 rounded-md"><FileText size={14} /></div>
+                      <div><p className="text-xs text-gray-500">Notes</p><p className="text-sm font-medium text-gray-900">{selectedClient.notes}</p></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Account Summary */}
+                <div className="border-t pt-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1"><Wallet size={12} /> Résumé du compte</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                      <p className="text-xs text-green-600 mb-1 flex items-center gap-1"><ArrowDownRight size={12} /> Crédit initial</p>
+                      <p className="text-lg font-bold text-green-700">{(selectedClient.openingCredit || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                    </div>
+                    <div className="bg-orange-50 rounded-xl p-3 border border-orange-100">
+                      <p className="text-xs text-orange-600 mb-1 flex items-center gap-1"><ArrowUpRight size={12} /> Dette initiale</p>
+                      <p className="text-lg font-bold text-orange-700">{(selectedClient.openingDebt || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                    </div>
+                    <div className={`rounded-xl p-3 border ${selectedClient.outstandingBalance > 0 ? 'bg-red-50 border-red-100' : 'bg-blue-50 border-blue-100'}`}>
+                      <p className={`text-xs mb-1 ${selectedClient.outstandingBalance > 0 ? 'text-red-600' : 'text-blue-600'}`}>Solde actuel</p>
+                      <p className={`text-lg font-bold ${selectedClient.outstandingBalance > 0 ? 'text-red-700' : 'text-blue-700'}`}>{selectedClient.outstandingBalance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                      <p className="text-xs text-gray-600 mb-1">Limite Crédit</p>
+                      <p className="text-lg font-bold text-gray-800">{selectedClient.creditLimit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedClient.outstandingBalance > 0 && (
+                  <button onClick={() => setShowPaymentForm(true)} className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl text-sm font-medium hover:from-green-700 hover:to-emerald-700 shadow-sm transition-all">
+                    <CreditCard size={16} /> Enregistrer Paiement
+                  </button>
+                )}
               </div>
-              {selectedClient.outstandingBalance > 0 && (
-                <button onClick={() => setShowPaymentForm(true)} className="w-full flex items-center justify-center gap-2 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-                  <CreditCard size={16} /> Enregistrer Paiement
-                </button>
-              )}
             </div>
 
             {/* Ledger */}
-            <div className="bg-white rounded-xl border overflow-hidden">
-              <div className="p-3 border-b"><p className="font-medium text-sm text-gray-700">Historique des Transactions</p></div>
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="p-4 border-b flex items-center gap-2"><Receipt size={16} className="text-indigo-600" /><p className="font-semibold text-sm text-gray-800">Historique des Transactions</p></div>
               <div className="divide-y max-h-80 overflow-y-auto">
                 {ledger.map(tx => (
-                  <div key={tx.id} className="p-3 flex justify-between items-center">
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">{tx.type}</p>
-                      <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString('fr-FR')}</p>
-                      {tx.description && <p className="text-xs text-gray-400">{tx.description}</p>}
+                  <div key={tx.id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${tx.type === 'PAYMENT' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                        {tx.type === 'PAYMENT' ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700">{tx.type}</p>
+                        <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString('fr-FR')}</p>
+                        {tx.description && <p className="text-xs text-gray-500 mt-0.5">{tx.description}</p>}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-medium ${tx.type === 'PAYMENT' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'PAYMENT' ? '-' : '+'}{tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                      <p className={`text-sm font-bold ${tx.type === 'PAYMENT' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'PAYMENT' ? '-' : '+'}{tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                       <p className="text-xs text-gray-400">Solde: {tx.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
                     </div>
                   </div>
                 ))}
-                {ledger.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">Aucune transaction</p>}
+                {ledger.length === 0 && <p className="text-center py-6 text-gray-400 text-sm">Aucune transaction</p>}
               </div>
             </div>
           </div>
