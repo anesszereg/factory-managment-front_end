@@ -283,8 +283,8 @@ export default function ClientsPage() {
 
       {/* Create Client Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] my-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 pt-6 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[75vh]">
             <div className="p-4 border-b">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Users size={20} /></div>
@@ -292,72 +292,72 @@ export default function ClientsPage() {
               </div>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-4">
+            <div className="p-4 overflow-y-auto space-y-3 max-h-[calc(75vh-7rem)]">
               {/* Identity Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Identité</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Identité</h3>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Prénom *</label>
-                    <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Prénom" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Prénom *</label>
+                    <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Prénom" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Nom *</label>
-                    <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Nom *</label>
+                    <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Société</label>
-                    <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom de la société" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Société</label>
+                    <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom de la société" />
                   </div>
                 </div>
               </div>
 
               {/* Contact Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contact</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Contact</h3>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Téléphone</label>
-                    <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Téléphone" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Téléphone</label>
+                    <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Téléphone" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@exemple.com" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Email</label>
+                    <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@exemple.com" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
-                    <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Adresse complète" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Adresse</label>
+                    <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Adresse complète" />
                   </div>
                 </div>
               </div>
 
               {/* Account Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Compte</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Compte</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Limite Crédit</label>
-                    <input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Limite Crédit</label>
+                    <input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Crédit initial</label>
-                    <input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Crédit initial</label>
+                    <input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Dette initiale</label>
-                    <input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Dette initiale</label>
+                    <input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
                   <div className="col-span-2 sm:col-span-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Date d'ouverture</label>
-                    <input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Date d'ouverture</label>
+                    <input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
                   </div>
                 </div>
               </div>
 
               {/* Notes Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={1} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Notes</h3>
+                <input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Notes additionnelles..." />
               </div>
             </div>
 
