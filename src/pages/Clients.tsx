@@ -283,27 +283,29 @@ export default function ClientsPage() {
       {/* Create Client Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Users size={20} /></div>
-              <h2 className="text-xl font-bold text-gray-900">Nouveau Client</h2>
+          <div className="bg-white rounded-xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Users size={20} /></div>
+                <h2 className="text-lg font-bold text-gray-900">Nouveau Client</h2>
+              </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="p-5 overflow-y-auto space-y-5">
               {/* Identity Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Identité</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Identité</h3>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Prénom *</label>
                     <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Prénom" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Nom *</label>
                     <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Société</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Société</label>
                     <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Nom de la société" />
                   </div>
                 </div>
@@ -311,18 +313,18 @@ export default function ClientsPage() {
 
               {/* Contact Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Contact</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Contact</h3>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Téléphone</label>
                     <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Téléphone" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="email@exemple.com" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
                     <input value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Adresse complète" />
                   </div>
                 </div>
@@ -330,22 +332,22 @@ export default function ClientsPage() {
 
               {/* Account Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Compte</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Compte</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Limite Crédit (DA)</label>
-                    <input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Limite Crédit</label>
+                    <input type="number" value={form.creditLimit} onChange={e => setForm(p => ({ ...p, creditLimit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Crédit initial (DA)</label>
-                    <input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Crédit initial</label>
+                    <input type="number" value={form.openingCredit} onChange={e => setForm(p => ({ ...p, openingCredit: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dette initiale (DA)</label>
-                    <input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="0" />
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Dette initiale</label>
+                    <input type="number" value={form.openingDebt} onChange={e => setForm(p => ({ ...p, openingDebt: Number(e.target.value) }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="DA" />
                   </div>
-                  <div className="col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date d'ouverture</label>
+                  <div className="col-span-2 sm:col-span-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Date d'ouverture</label>
                     <input type="date" value={form.openingBalanceDate} onChange={e => setForm(p => ({ ...p, openingBalanceDate: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
                   </div>
                 </div>
@@ -353,13 +355,13 @@ export default function ClientsPage() {
 
               {/* Notes Section */}
               <div>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Notes</h3>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={3} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Notes</h3>
+                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" placeholder="Notes additionnelles..." />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Annuler</button>
+            <div className="flex justify-end gap-3 p-5 border-t bg-gray-50 rounded-b-xl">
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm font-medium text-gray-700 hover:bg-white">Annuler</button>
               <button onClick={handleCreate} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
             </div>
           </div>
