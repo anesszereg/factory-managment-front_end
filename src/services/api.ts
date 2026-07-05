@@ -354,6 +354,7 @@ export const dailyPieceReceiptsApi = {
     paidAmount?: number;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.post<DailyPieceReceipt>('/daily-piece-receipts', data),
   update: (id: number, data: {
     date?: string;
@@ -361,9 +362,10 @@ export const dailyPieceReceiptsApi = {
     paidAmount?: number;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.put<DailyPieceReceipt>(`/daily-piece-receipts/${id}`, data),
-  addPayment: (id: number, amount: number, createExpense?: boolean) => 
-    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount, createExpense }),
+  addPayment: (id: number, amount: number, createExpense?: boolean, moneyBoxId?: number) => 
+    api.post<DailyPieceReceipt>(`/daily-piece-receipts/${id}/payment`, { amount, createExpense, moneyBoxId }),
   delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
   getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
     api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),
