@@ -635,14 +635,16 @@ export default function Suppliers() {
       const supplierOrders = orders.filter(o => o.supplierId === supplier.id);
       const supplierTotal = supplierOrders.reduce((sum, o) => sum + o.totalAmount, 0);
       const supplierPaid = supplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-      const supplierBalance = supplierTotal - supplierPaid;
-      
+      const supplierBalance = supplierTotal - supplierPaid + (supplier.openingDebt || 0) - (supplier.openingCredit || 0);
+
       return {
         'Supplier': supplier.name,
         'Phone': supplier.phone || '-',
         'Total Orders': supplierOrders.length,
         'Total Amount': supplierTotal,
         'Total Paid': supplierPaid,
+        'Opening Credit': supplier.openingCredit || 0,
+        'Opening Debt': supplier.openingDebt || 0,
         'Balance Due': supplierBalance,
         'Status': supplier.status,
       };
@@ -655,6 +657,8 @@ export default function Suppliers() {
       'Total Orders': orders.length,
       'Total Amount': totalAmount,
       'Total Paid': totalPaid,
+      'Opening Credit': totalOpeningCredit,
+      'Opening Debt': totalOpeningDebt,
       'Balance Due': totalRemaining,
       'Status': '-' as any,
     });
@@ -672,7 +676,9 @@ export default function Suppliers() {
   const totalOrders = orders.length;
   const totalAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
   const totalPaid = orders.reduce((sum, o) => sum + o.paidAmount, 0);
-  const totalRemaining = totalAmount - totalPaid;
+  const totalOpeningCredit = suppliers.reduce((sum, s) => sum + (s.openingCredit || 0), 0);
+  const totalOpeningDebt = suppliers.reduce((sum, s) => sum + (s.openingDebt || 0), 0);
+  const totalRemaining = totalAmount - totalPaid + totalOpeningDebt - totalOpeningCredit;
 
   if (loading) {
     return <PageLoading />;
@@ -777,8 +783,8 @@ export default function Suppliers() {
               const supplierOrders = orders.filter(o => o.supplierId === supplier.id);
               const supplierTotal = supplierOrders.reduce((sum, o) => sum + o.totalAmount, 0);
               const supplierPaid = supplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-              const supplierBalance = supplierTotal - supplierPaid;
-              
+              const supplierBalance = supplierTotal - supplierPaid + (supplier.openingDebt || 0) - (supplier.openingCredit || 0);
+
               return (
                 <div
                   key={supplier.id}
