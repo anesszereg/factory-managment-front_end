@@ -95,6 +95,7 @@ export const dailyProductionApi = {
     quantityCompleted: number;
     quantityLost?: number;
     notes?: string;
+    colorSplits?: { color: string; quantity: number }[];
   }) => api.post<DailyProduction>('/daily-production', data),
   update: (id: number, data: {
     quantityEntered?: number;

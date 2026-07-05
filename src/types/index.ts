@@ -67,6 +67,15 @@ export interface ProductionOrder {
   model?: FurnitureModel;
 }
 
+export interface ProductionColorSplit {
+  id: number;
+  dailyProductionId: number;
+  color: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DailyProduction {
   id: number;
   orderId: number;
@@ -76,6 +85,7 @@ export interface DailyProduction {
   quantityCompleted: number;
   quantityLost: number;
   notes?: string;
+  colorSplits?: ProductionColorSplit[];
   createdAt: string;
   updatedAt: string;
   order?: ProductionOrder;

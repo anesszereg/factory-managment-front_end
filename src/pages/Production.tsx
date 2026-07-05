@@ -24,6 +24,8 @@ export function Production() {
   const [showProductionForm, setShowProductionForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<ProductionOrder | null>(null);
   const [editingProduction, setEditingProduction] = useState<DailyProduction | null>(null);
+  const [colorSplits, setColorSplits] = useState<{ color: string; quantity: number }[]>([]);
+  const [selectedStep, setSelectedStep] = useState<ProductionStep | ''>('');
   const [loading, setLoading] = useState(true);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -109,14 +111,28 @@ export function Production() {
   const handleCreateProduction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+    const step = formData.get('step') as ProductionStep;
+    const quantityCompleted = parseInt(formData.get('quantityCompleted') as string);
+
+    const validColorSplits = step === ProductionStep.PAINT
+      ? colorSplits.filter(s => s.color.trim() && s.quantity > 0)
+      : [];
+
+    if (step === ProductionStep.PAINT && validColorSplits.length > 0) {
+      const splitTotal = validColorSplits.reduce((sum, s) => sum + s.quantity, 0);
+      if (splitTotal !== quantityCompleted) {
+        toast.error(`Color split total (${splitTotal}) must equal completed quantity (${quantityCompleted})`);
+        return;
+      }
+    }
+
     const loadingToast = toast.loading(editingProduction ? 'Updating production...' : 'Recording production...');
-    
+
     try {
       if (editingProduction) {
         await dailyProductionApi.update(editingProduction.id, {
           quantityEntered: parseInt(formData.get('quantityEntered') as string),
-          quantityCompleted: parseInt(formData.get('quantityCompleted') as string),
+          quantityCompleted,
           quantityLost: parseInt(formData.get('quantityLost') as string) || 0,
           notes: formData.get('notes') as string || undefined,
         });
@@ -125,21 +141,52 @@ export function Production() {
       } else {
         await dailyProductionApi.create({
           orderId: parseInt(formData.get('orderId') as string),
-          step: formData.get('step') as ProductionStep,
+          step,
           date: formData.get('date') as string,
           quantityEntered: parseInt(formData.get('quantityEntered') as string),
-          quantityCompleted: parseInt(formData.get('quantityCompleted') as string),
+          quantityCompleted,
           quantityLost: parseInt(formData.get('quantityLost') as string) || 0,
           notes: formData.get('notes') as string || undefined,
+          colorSplits: validColorSplits.length > 0 ? validColorSplits : undefined,
         });
         toast.success('Production recorded successfully!', { id: loadingToast });
       }
       setShowProductionForm(false);
+      setColorSplits([]);
       loadData();
     } catch (error) {
       console.error('Failed to save production entry:', error);
       toast.error('Failed to save production. Please try again.', { id: loadingToast });
     }
+  };
+
+  const addColorSplit = () => {
+    setColorSplits(prev => [...prev, { color: '', quantity: 0 }]);
+  };
+
+  const updateColorSplit = (index: number, field: 'color' | 'quantity', value: string | number) => {
+    setColorSplits(prev => prev.map((split, i) => i === index ? { ...split, [field]: value } : split));
+  };
+
+  const removeColorSplit = (index: number) => {
+    setColorSplits(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const openProductionForm = (production: DailyProduction | null = null, orderId?: number, step?: ProductionStep) => {
+    setEditingProduction(production);
+    setSelectedStep(production?.step || step || '');
+    if (production?.colorSplits) {
+      setColorSplits(production.colorSplits.map(s => ({ color: s.color, quantity: s.quantity })));
+    } else {
+      setColorSplits([]);
+    }
+    setShowProductionForm(true);
+    setTimeout(() => {
+      const orderSelect = document.querySelector('select[name="orderId"]') as HTMLSelectElement;
+      const stepSelect = document.querySelector('select[name="step"]') as HTMLSelectElement;
+      if (orderId && orderSelect) orderSelect.value = orderId.toString();
+      if (step && stepSelect) stepSelect.value = step;
+    }, 0);
   };
 
   const handleDeleteProduction = async (id: number) => {
@@ -616,11 +663,18 @@ export function Production() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showProductionForm} onOpenChange={setShowProductionForm}>
+      <Dialog open={showProductionForm} onOpenChange={(open) => {
+        setShowProductionForm(open);
+        if (!open) {
+          setEditingProduction(null);
+          setColorSplits([]);
+        }
+      }}>
         <DialogContent>
           <DialogHeader onClose={() => {
             setShowProductionForm(false);
             setEditingProduction(null);
+            setColorSplits([]);
           }}>
             <DialogTitle>{editingProduction ? 'Edit Production Record' : 'Record Daily Production'}</DialogTitle>
           </DialogHeader>
@@ -646,6 +700,7 @@ export function Production() {
               required
               disabled={!!editingProduction}
               defaultValue={editingProduction?.step}
+              onChange={(e) => setSelectedStep(e.target.value as ProductionStep)}
               helperText="Which production step is being recorded"
             >
               <option value="">Select a step</option>
@@ -692,6 +747,66 @@ export function Production() {
                 placeholder="0"
               />
             </div>
+
+            {selectedStep === ProductionStep.PAINT && (
+              <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Paint Colors</h3>
+                  {!editingProduction && (
+                    <Button type="button" variant="outline" size="sm" onClick={addColorSplit}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add color
+                    </Button>
+                  )}
+                </div>
+                {colorSplits.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No colors specified</p>
+                ) : (
+                  <div className="space-y-2">
+                    {colorSplits.map((split, index) => (
+                      <div key={index} className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-600 mb-1">Color</label>
+                          <Input
+                            type="text"
+                            placeholder="e.g. Black, White"
+                            value={split.color}
+                            onChange={(e) => !editingProduction && updateColorSplit(index, 'color', e.target.value)}
+                            disabled={!!editingProduction}
+                            required
+                          />
+                        </div>
+                        <div className="w-28">
+                          <label className="block text-xs text-gray-600 mb-1">Quantity</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={split.quantity || ''}
+                            onChange={(e) => !editingProduction && updateColorSplit(index, 'quantity', parseInt(e.target.value) || 0)}
+                            disabled={!!editingProduction}
+                            required
+                          />
+                        </div>
+                        {!editingProduction && (
+                          <button
+                            type="button"
+                            onClick={() => removeColorSplit(index)}
+                            className="p-2 rounded-md text-red-600 hover:bg-red-50"
+                            title="Remove"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  Total: {colorSplits.reduce((sum, s) => sum + s.quantity, 0)} units
+                </p>
+              </div>
+            )}
+
             <Textarea
               label="Notes"
               name="notes"
@@ -704,6 +819,8 @@ export function Production() {
               <Button type="button" variant="outline" onClick={() => {
                 setShowProductionForm(false);
                 setEditingProduction(null);
+                setColorSplits([]);
+                setSelectedStep('');
               }}>
                 Cancel
               </Button>
@@ -926,6 +1043,24 @@ export function Production() {
                                     />
                                   </div>
                                   <p className="text-[11px] font-semibold text-gray-500">{completionPercent}% complete</p>
+                                  {stepInfo.step === ProductionStep.PAINT && progress && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {dailyProduction
+                                        .filter(p => p.orderId === selectedOrder.id && p.step === ProductionStep.PAINT && p.colorSplits && p.colorSplits.length > 0)
+                                        .flatMap(p => p.colorSplits!)
+                                        .reduce((acc, split) => {
+                                          const existing = acc.find(s => s.color.toLowerCase() === split.color.toLowerCase());
+                                          if (existing) existing.quantity += split.quantity;
+                                          else acc.push({ color: split.color, quantity: split.quantity });
+                                          return acc;
+                                        }, [] as { color: string; quantity: number }[])
+                                        .map((split, idx) => (
+                                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 rounded-full">
+                                            {split.color}: {split.quantity}
+                                          </span>
+                                        ))}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <p className="text-sm text-gray-400 italic">Waiting to start...</p>
@@ -937,16 +1072,7 @@ export function Production() {
                               size="sm"
                               variant="outline"
                               className={`text-xs ${status === 'pending' ? 'border-dashed' : ''}`}
-                              onClick={() => {
-                                setEditingProduction(null);
-                                setShowProductionForm(true);
-                                setTimeout(() => {
-                                  const orderSelect = document.querySelector('select[name="orderId"]') as HTMLSelectElement;
-                                  const stepSelect = document.querySelector('select[name="step"]') as HTMLSelectElement;
-                                  if (orderSelect) orderSelect.value = selectedOrder.id.toString();
-                                  if (stepSelect) stepSelect.value = stepInfo.step;
-                                }, 0);
-                              }}
+                              onClick={() => openProductionForm(null, selectedOrder.id, stepInfo.step)}
                             >
                               <Plus className="h-3 w-3 mr-1" />
                               Record
@@ -957,7 +1083,7 @@ export function Production() {
                                   <div key={prod.id} className="flex gap-0.5">
                                     <PrintButton onClick={() => printProductionRecord(prod)} label="Print record" />
                                     <button
-                                      onClick={() => { setEditingProduction(prod); setShowProductionForm(true); }}
+                                      onClick={() => openProductionForm(prod)}
                                       className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-colors"
                                       title="Edit"
                                     >
