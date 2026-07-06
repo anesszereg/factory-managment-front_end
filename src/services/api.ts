@@ -306,6 +306,7 @@ export const salaryAllowancesApi = {
     date?: string;
     amount: number;
     description?: string;
+    moneyBoxId?: number;
   }) => api.post<SalaryAllowance>('/salary-allowances', data),
   update: (id: number, data: {
     date?: string;
