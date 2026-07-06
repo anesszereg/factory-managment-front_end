@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { salaryAllowancesApi, employeesApi } from '../services/api';
-import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo } from '../types';
+import { salaryAllowancesApi, employeesApi, moneyBoxApi } from '../services/api';
+import { SalaryAllowance, Employee, EmployeeStatus, EmployeeSalaryInfo, MoneyBox } from '../types';
 import { format, startOfMonth, endOfMonth, subMonths, differenceInDays } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { PageLoading } from '@/components/ui/Loading';
@@ -33,11 +33,14 @@ const SalaryAllowances: React.FC = () => {
     description: ''
   });
   const [salarySummary, setSalarySummary] = useState<any>(null);
+  const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
+  const [formMoneyBoxId, setFormMoneyBoxId] = useState<number>(0);
 
   useEffect(() => {
     fetchEmployees();
     fetchAllowances();
     fetchSalarySummary();
+    fetchMoneyBoxes();
   }, [filterEmployeeId, filterStartDate, filterEndDate]);
 
   useEffect(() => {
@@ -45,6 +48,15 @@ const SalaryAllowances: React.FC = () => {
       fetchSalaryInfo(selectedEmployee);
     }
   }, [selectedEmployee]);
+
+  const fetchMoneyBoxes = async () => {
+    try {
+      const response = await moneyBoxApi.getAll();
+      setMoneyBoxes(response.data);
+    } catch (error) {
+      console.error('Error fetching money boxes:', error);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -177,7 +189,8 @@ const SalaryAllowances: React.FC = () => {
           employeeId: parseInt(formData.employeeId),
           date: formData.date,
           amount: parseFloat(formData.amount),
-          description: formData.description
+          description: formData.description,
+          moneyBoxId: formMoneyBoxId || undefined,
         });
         toast.success('Allowance created', { id: loadingToast });
       }
@@ -220,6 +233,7 @@ const SalaryAllowances: React.FC = () => {
       amount: '',
       description: ''
     });
+    setFormMoneyBoxId(0);
     setEditingAllowance(null);
     setShowForm(false);
   };
@@ -782,6 +796,24 @@ const SalaryAllowances: React.FC = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={2} placeholder="Motif de l'acompte..." />
             </div>
+            {!editingAllowance && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
+                <select
+                  required
+                  value={formMoneyBoxId}
+                  onChange={(e) => setFormMoneyBoxId(parseInt(e.target.value) || 0)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Sélectionner une caisse...</option>
+                  {moneyBoxes.map(box => (
+                    <option key={box.id} value={box.id}>
+                      {box.name} — {formatCurrency(box.currentBalance)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex gap-3 pt-1">
               <Button variant="outline" type="button" onClick={resetForm} className="flex-1">Annuler</Button>
               <Button type="submit" className="flex-1">
