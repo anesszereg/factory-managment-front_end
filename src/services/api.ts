@@ -370,6 +370,8 @@ export const dailyPieceReceiptsApi = {
   delete: (id: number) => api.delete(`/daily-piece-receipts/${id}`),
   getSummary: (pieceWorkerId?: number, startDate?: string, endDate?: string) => 
     api.get('/daily-piece-receipts/summary', { params: { pieceWorkerId, startDate, endDate } }),
+  getWorkerPayments: (workerId: number) =>
+    api.get(`/daily-piece-receipts/worker/${workerId}/payments`),
 };
 
 // Suppliers API
@@ -432,6 +434,7 @@ export const supplierOrdersApi = {
     paymentMethod?: string;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.post<SupplierPayment>(`/suppliers/orders/${orderId}/payments`, data),
   deletePayment: (paymentId: number) => api.delete(`/suppliers/payments/${paymentId}`),
 };

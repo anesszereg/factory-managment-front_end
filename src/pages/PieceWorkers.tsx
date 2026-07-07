@@ -83,6 +83,8 @@ export default function PieceWorkers() {
   const [showPaymentReceipt, setShowPaymentReceipt] = useState(false);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [paymentHistoryWorker, setPaymentHistoryWorker] = useState<PieceWorker | null>(null);
+  const [paymentHistoryTab, setPaymentHistoryTab] = useState<'receipts' | 'transactions'>('receipts');
+  const [workerPaymentTransactions, setWorkerPaymentTransactions] = useState<any[]>([]);
   const [selectedReceipts, setSelectedReceipts] = useState<number[]>([]);
 
   useEffect(() => {
@@ -517,6 +519,56 @@ export default function PieceWorkers() {
           <div class="row red"><span>Reste dû:</span><span>${formatCurrency(totalRemaining)}</span></div>
         </div>
         <div class="footer"><p>${workerReceipts.length} bons · Merci pour votre travail</p></div>
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const printPaymentTransactions = (worker: PieceWorker) => {
+    if (!worker || workerPaymentTransactions.length === 0) {
+      toast.error('Aucune transaction à imprimer');
+      return;
+    }
+    const txTotal = workerPaymentTransactions.reduce((s: number, t: any) => s + t.amount, 0);
+    const rowsHtml = workerPaymentTransactions.map((t: any) => `
+      <tr>
+        <td>${format(new Date(t.date), 'dd/MM/yy')}</td>
+        <td style="font-size:7px;max-width:30mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description || 'Paiement'}</td>
+        <td style="font-size:7px">${t.moneyBox?.name || '—'}</td>
+        <td class="r">${formatCurrency(t.amount)}</td>
+        <td class="c">#${t.receiptId}</td>
+      </tr>`).join('');
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>Transactions - ${worker.firstName} ${worker.lastName}</title>
+      <style>
+        @page { size: 100mm auto; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; font-size: 9px; width: 100mm; padding: 4mm; line-height: 1.3; }
+        .title { text-align: center; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }
+        .sub { text-align: center; font-size: 9px; margin-bottom: 1mm; }
+        table { width: 100%; border-collapse: collapse; font-size: 8px; }
+        th { border-bottom: 1px solid #000; padding: 0.5mm 0; text-align: left; font-size: 7px; }
+        td { padding: 0.5mm 0; border-bottom: 1px dotted #ccc; font-size: 8px; }
+        td.r { text-align: right; } td.c { text-align: center; } th.r { text-align: right; } th.c { text-align: center; }
+        .totals { margin-top: 2mm; padding-top: 1mm; border-top: 1px solid #000; }
+        .row { display: flex; justify-content: space-between; padding: 0.4mm 0; }
+        .bold { font-weight: bold; }
+        .footer { text-align: center; font-size: 7px; color: #666; margin-top: 2mm; padding-top: 1mm; border-top: 1px dashed #000; }
+      </style></head><body>
+        <div class="title">TRANSACTIONS PAIEMENTS</div>
+        <div class="sub">${worker.firstName} ${worker.lastName}</div>
+        <div class="sub">Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
+        <table style="margin-top:2mm">
+          <thead><tr><th>Date</th><th>Description</th><th>Caisse</th><th class="r">Montant</th><th class="c">Bon</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="totals">
+          <div class="row bold"><span>Total payé:</span><span>${formatCurrency(txTotal)}</span></div>
+          <div class="row"><span>Nb transactions:</span><span>${workerPaymentTransactions.length}</span></div>
+        </div>
+        <div class="footer"><p>Merci pour votre travail</p></div>
       </body></html>`);
     printWindow.document.close();
     printWindow.print();
@@ -1195,10 +1247,15 @@ export default function PieceWorkers() {
                         Summary
                       </button>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
                           setPaymentHistoryWorker(worker);
+                          setPaymentHistoryTab('receipts');
                           setShowPaymentHistory(true);
+                          try {
+                            const res = await dailyPieceReceiptsApi.getWorkerPayments(worker.id);
+                            setWorkerPaymentTransactions(res.data);
+                          } catch { setWorkerPaymentTransactions([]); }
                         }}
                         className="flex-1 bg-amber-50 text-amber-700 hover:bg-amber-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
                         title="Payment History"
@@ -2167,6 +2224,7 @@ export default function PieceWorkers() {
             const totalAmount = workerReceipts.reduce((s, r) => s + r.totalAmount, 0);
             const totalPaid = workerReceipts.reduce((s, r) => s + r.paidAmount, 0);
             const totalRemaining = totalAmount - totalPaid;
+            const txTotalPaid = workerPaymentTransactions.reduce((s: number, t: any) => s + t.amount, 0);
             return (
               <div className="space-y-4">
                 {/* KPI bar */}
@@ -2185,74 +2243,156 @@ export default function PieceWorkers() {
                   </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-y-auto max-h-80 rounded-xl border border-gray-200">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Articles</th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Payé</th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Reste</th>
-                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
-                        <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Bon</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {workerReceipts.map((r) => (
-                        <tr key={r.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-700">
-                            {format(new Date(r.date), 'dd/MM/yyyy')}
-                          </td>
-                          <td className="px-3 py-2 text-gray-600 max-w-[180px]">
-                            {r.items?.map((item, i) => (
-                              <div key={i} className="text-xs">{item.itemName} × {item.quantity}</div>
-                            ))}
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(r.totalAmount)}</td>
-                          <td className="px-3 py-2 text-right text-green-700">{formatCurrency(r.paidAmount)}</td>
-                          <td className={`px-3 py-2 text-right font-semibold ${r.totalAmount - r.paidAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                            {formatCurrency(r.totalAmount - r.paidAmount)}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${getPaymentStatusBadge(r.paymentStatus)}`}>
-                              {getPaymentStatusLabel(r.paymentStatus)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => printReceipt(r)}
-                              className="p-1 text-purple-600 hover:bg-purple-50 rounded"
-                              title="Imprimer bon"
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {workerReceipts.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-3 py-8 text-center text-gray-400 text-sm">
-                            Aucun bon trouvé pour ce travailleur
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                {/* Tabs */}
+                <div className="flex border-b">
+                  <button
+                    onClick={() => setPaymentHistoryTab('receipts')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${paymentHistoryTab === 'receipts' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Bons ({workerReceipts.length})
+                  </button>
+                  <button
+                    onClick={() => setPaymentHistoryTab('transactions')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${paymentHistoryTab === 'transactions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Transactions ({workerPaymentTransactions.length})
+                  </button>
                 </div>
+
+                {/* Receipts Tab */}
+                {paymentHistoryTab === 'receipts' && (
+                  <div className="overflow-y-auto max-h-80 rounded-xl border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Articles</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Payé</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Reste</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Statut</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Bon</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {workerReceipts.map((r) => (
+                          <tr key={r.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap text-gray-700">
+                              {format(new Date(r.date), 'dd/MM/yyyy')}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600 max-w-[180px]">
+                              {r.items?.map((item, i) => (
+                                <div key={i} className="text-xs">{item.itemName} × {item.quantity}</div>
+                              ))}
+                            </td>
+                            <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(r.totalAmount)}</td>
+                            <td className="px-3 py-2 text-right text-green-700">{formatCurrency(r.paidAmount)}</td>
+                            <td className={`px-3 py-2 text-right font-semibold ${r.totalAmount - r.paidAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                              {formatCurrency(r.totalAmount - r.paidAmount)}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${getPaymentStatusBadge(r.paymentStatus)}`}>
+                                {getPaymentStatusLabel(r.paymentStatus)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => printReceipt(r)}
+                                className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                                title="Imprimer bon"
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {workerReceipts.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-8 text-center text-gray-400 text-sm">
+                              Aucun bon trouvé pour ce travailleur
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Transactions Tab */}
+                {paymentHistoryTab === 'transactions' && (
+                  <div className="overflow-y-auto max-h-80 rounded-xl border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Description</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Caisse</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase">Montant</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Bon #</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {workerPaymentTransactions.map((t: any) => (
+                          <tr key={t.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap text-gray-700">
+                              {format(new Date(t.date), 'dd/MM/yyyy')}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600 text-xs max-w-[200px] truncate">
+                              {t.description || 'Paiement façonnier'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600 text-xs">
+                              {t.moneyBox?.name || '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-green-700">
+                              {formatCurrency(t.amount)}
+                            </td>
+                            <td className="px-3 py-2 text-center text-xs text-gray-500">
+                              #{t.receiptId}
+                            </td>
+                          </tr>
+                        ))}
+                        {workerPaymentTransactions.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-3 py-8 text-center text-gray-400 text-sm">
+                              Aucune transaction de paiement trouvée
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      {workerPaymentTransactions.length > 0 && (
+                        <tfoot className="bg-gray-100">
+                          <tr className="font-bold">
+                            <td className="px-3 py-2 text-sm" colSpan={3}>TOTAL</td>
+                            <td className="px-3 py-2 text-sm text-right text-green-700">{formatCurrency(txTotalPaid)}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-1">
                   <Button variant="outline" onClick={() => setShowPaymentHistory(false)} className="flex-1">
                     Fermer
                   </Button>
-                  <Button
-                    onClick={() => printPaymentHistory(paymentHistoryWorker)}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimer Historique
-                  </Button>
+                  {paymentHistoryTab === 'receipts' ? (
+                    <Button
+                      onClick={() => printPaymentHistory(paymentHistoryWorker)}
+                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimer Bons
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => printPaymentTransactions(paymentHistoryWorker)}
+                      className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Imprimer Transactions
+                    </Button>
+                  )}
                 </div>
               </div>
             );
