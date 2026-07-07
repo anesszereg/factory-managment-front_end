@@ -19,8 +19,8 @@ export function Expenses() {
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterPayment, setFilterPayment] = useState<string>('all');
   const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
