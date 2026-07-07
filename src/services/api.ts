@@ -513,7 +513,7 @@ export const warehouseApi = {
   delete: (id: number) => api.delete(`/warehouses/${id}`),
   getAllInventory: (warehouseId?: number) => api.get<FinishedProductInventory[]>('/warehouses/inventory', { params: { warehouseId } }),
   getInventoryById: (id: number) => api.get<FinishedProductInventory>(`/warehouses/inventory/${id}`),
-  addInventory: (data: { modelId: number; warehouseId: number; sku: string; quantity: number; productionCost?: number; batchNumber?: string; productionDate?: string }) =>
+  addInventory: (data: { modelId: number; warehouseId: number; sku: string; color?: string; quantity: number; productionCost?: number; batchNumber?: string; productionDate?: string }) =>
     api.post<FinishedProductInventory>('/warehouses/inventory', data),
   adjustInventory: (id: number, quantity: number, notes?: string) =>
     api.patch<FinishedProductInventory>(`/warehouses/inventory/${id}/adjust`, { quantity, notes }),

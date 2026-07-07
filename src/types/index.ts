@@ -656,6 +656,7 @@ export interface FinishedProductInventory {
   modelId: number;
   warehouseId: number;
   sku: string;
+  color?: string;
   quantity: number;
   productionCost: number;
   batchNumber?: string;
