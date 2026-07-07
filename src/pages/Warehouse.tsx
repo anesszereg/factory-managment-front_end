@@ -22,7 +22,7 @@ export default function WarehousePage() {
   const [loading, setLoading] = useState(false);
 
   const [whForm, setWhForm] = useState({ name: '', code: '', address: '', description: '' });
-  const [invForm, setInvForm] = useState({ modelId: 0, warehouseId: 0, sku: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
+  const [invForm, setInvForm] = useState({ modelId: 0, warehouseId: 0, sku: '', color: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
   const [transferForm, setTransferForm] = useState({ productId: 0, fromWarehouseId: 0, toWarehouseId: 0, quantity: 1, notes: '' });
   const [editingWH, setEditingWH] = useState<Warehouse | null>(null);
 
@@ -62,7 +62,7 @@ export default function WarehousePage() {
     try {
       await warehouseApi.addInventory(invForm);
       setShowInvForm(false);
-      setInvForm({ modelId: 0, warehouseId: 0, sku: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
+      setInvForm({ modelId: 0, warehouseId: 0, sku: '', color: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
       loadAll();
     } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
   };
@@ -75,8 +75,9 @@ export default function WarehousePage() {
   };
 
   const filtered = inventory.filter(p => {
+    const s = search.toLowerCase();
     const name = p.model?.name ?? p.sku;
-    return name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    return name.toLowerCase().includes(s) || p.sku.toLowerCase().includes(s) || (p.color ?? '').toLowerCase().includes(s);
   });
 
   // ── KPI computations (always from allInventory for accuracy) ──────────────
@@ -277,6 +278,7 @@ export default function WarehousePage() {
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="text-left p-3 font-medium text-gray-600">Produit</th>
+                      <th className="text-left p-3 font-medium text-gray-600">Couleur</th>
                       <th className="text-left p-3 font-medium text-gray-600">SKU</th>
                       <th className="text-left p-3 font-medium text-gray-600">Entrepôt</th>
                       <th className="text-left p-3 font-medium text-gray-600">Lot</th>
@@ -290,6 +292,7 @@ export default function WarehousePage() {
                     {filtered.map(p => (
                       <tr key={p.id} className="border-b hover:bg-gray-50">
                         <td className="p-3 font-medium text-gray-900">{p.model?.name ?? '—'}<p className="text-xs text-gray-400">{p.model?.size}</p></td>
+                        <td className="p-3 text-gray-700">{p.color ?? '—'}</td>
                         <td className="p-3 text-gray-500 font-mono text-xs">{p.sku}</td>
                         <td className="p-3">{p.warehouse?.name ?? '—'}</td>
                         <td className="p-3 text-gray-500 text-xs">{p.batchNumber ?? '—'}</td>
@@ -303,7 +306,7 @@ export default function WarehousePage() {
                         <td className="p-3 text-center"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.quantity > 10 ? 'bg-green-100 text-green-700' : p.quantity > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{p.quantity > 10 ? 'OK' : p.quantity > 0 ? 'Faible' : 'Épuisé'}</span></td>
                       </tr>
                     ))}
-                    {filtered.length === 0 && <tr><td colSpan={8} className="text-center py-8 text-gray-400">Aucun produit</td></tr>}
+                    {filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-gray-400">Aucun produit</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -379,6 +382,7 @@ export default function WarehousePage() {
                 </select>
               </div>
               <div><label className="text-sm font-medium text-gray-700">SKU *</label><input value={invForm.sku} onChange={e => setInvForm(p => ({ ...p, sku: e.target.value }))} placeholder="ex: PROD-001" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Couleur de peinture</label><input value={invForm.color} onChange={e => setInvForm(p => ({ ...p, color: e.target.value }))} placeholder="ex: Blanc, Noir, Gris..." className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div><label className="text-sm font-medium text-gray-700">Quantité *</label><input type="number" value={invForm.quantity} onChange={e => setInvForm(p => ({ ...p, quantity: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" min={1} /></div>
               <div><label className="text-sm font-medium text-gray-700">Coût/pièce de production (DA)</label><input type="number" value={invForm.productionCost} onChange={e => setInvForm(p => ({ ...p, productionCost: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div><label className="text-sm font-medium text-gray-700">N° de lot</label><input value={invForm.batchNumber} onChange={e => setInvForm(p => ({ ...p, batchNumber: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>

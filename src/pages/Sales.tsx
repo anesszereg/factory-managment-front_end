@@ -47,8 +47,21 @@ export default function SalesPage() {
   const removeItem = (i: number) => setItems(p => p.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: keyof OrderItem, val: number) => setItems(p => p.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
 
+  const getProductLabel = (p: FinishedProductInventory) => {
+    const name = p.model?.name ?? p.sku;
+    const color = p.color ? ` - ${p.color}` : '';
+    return `${name}${color}`;
+  };
+
+  const getProductCost = (productId: number) => {
+    const product = inventory.find(p => p.id === productId);
+    return product?.productionCost ?? 0;
+  };
+
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - i.discount / 100), 0);
+  const totalCost = items.reduce((s, i) => s + i.quantity * getProductCost(i.productId), 0);
   const total = subtotal - form.discount + form.tax;
+  const totalProfit = total - totalCost;
 
   const handleCreate = async () => {
     try {
@@ -156,19 +169,39 @@ export default function SalesPage() {
                 </button>
               )}
             </div>
-            {selectedOrder.items && selectedOrder.items.length > 0 && (
+            {selectedOrder.items && selectedOrder.items.length > 0 && (() => {
+              const orderTotalCost = selectedOrder.items.reduce((s, item) => s + item.quantity * (item.product?.productionCost ?? 0), 0);
+              const orderProfit = selectedOrder.total - orderTotalCost;
+              return (
               <div className="bg-white rounded-xl border overflow-hidden">
                 <div className="p-3 border-b"><p className="font-medium text-sm">Articles</p></div>
                 <div className="divide-y">
-                  {selectedOrder.items.map(item => (
-                    <div key={item.id} className="p-3 flex justify-between text-sm">
-                      <div><p className="font-medium">{item.product?.model?.name ?? `Produit #${item.productId}`}</p><p className="text-xs text-gray-400">{item.quantity} × {item.unitPrice.toLocaleString('fr-FR')} DA</p></div>
-                      <p className="font-bold">{item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                  {selectedOrder.items.map(item => {
+                    const cost = item.product?.productionCost ?? 0;
+                    const profit = item.total - item.quantity * cost;
+                    const productName = item.product?.model?.name ?? `Produit #${item.productId}`;
+                    const colorLabel = item.product?.color ? ` - ${item.product.color}` : '';
+                    return (
+                    <div key={item.id} className="p-3 text-sm">
+                      <div className="flex justify-between">
+                        <div><p className="font-medium">{productName}{colorLabel}</p><p className="text-xs text-gray-400">{item.quantity} × {item.unitPrice.toLocaleString('fr-FR')} DA</p></div>
+                        <p className="font-bold">{item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                      </div>
+                      <div className="mt-1 flex gap-3 text-xs">
+                        <span className="text-gray-400">Coût: <span className="font-medium text-gray-600">{(item.quantity * cost).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></span>
+                        <span className={`font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Bénéfice: {profit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
+                </div>
+                <div className="p-3 border-t bg-gray-50 space-y-1 text-xs">
+                  <div className="flex justify-between"><span className="text-gray-500">Coût total</span><span className="font-medium text-gray-700">{orderTotalCost.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
+                  <div className="flex justify-between font-bold text-sm"><span className={orderProfit >= 0 ? 'text-green-600' : 'text-red-600'}>Bénéfice</span><span className={orderProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{orderProfit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
                 </div>
               </div>
-            )}
+              );
+            })()}
           </div>
         )}
       </div>
@@ -191,25 +224,41 @@ export default function SalesPage() {
             </div>
             <div className="mb-3">
               <div className="flex justify-between items-center mb-2"><p className="font-medium text-sm">Articles</p><button onClick={addItem} className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded border border-blue-200"><Plus size={12} /> Ajouter</button></div>
-              {items.map((item, i) => (
-                <div key={i} className="grid grid-cols-5 gap-2 mb-2 items-end">
-                  <div className="col-span-2"><label className="text-xs text-gray-500">Produit</label>
-                    <select value={item.productId} onChange={e => updateItem(i, 'productId', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs">
-                      <option value={0}>Sélectionner...</option>
-                      {inventory.filter(p => p.quantity > 0).map(p => <option key={p.id} value={p.id}>{p.model?.name ?? p.sku} ({p.quantity} dispo)</option>)}
-                    </select>
+              {items.map((item, i) => {
+                const itemCost = getProductCost(item.productId);
+                const itemRevenue = item.quantity * item.unitPrice * (1 - item.discount / 100);
+                const itemProfit = itemRevenue - item.quantity * itemCost;
+                return (
+                <div key={i} className="mb-3 p-3 bg-gray-50 rounded-lg border">
+                  <div className="grid grid-cols-5 gap-2 items-end">
+                    <div className="col-span-2"><label className="text-xs text-gray-500">Produit</label>
+                      <select value={item.productId} onChange={e => updateItem(i, 'productId', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs bg-white">
+                        <option value={0}>Sélectionner...</option>
+                        {inventory.filter(p => p.quantity > 0).map(p => <option key={p.id} value={p.id}>{getProductLabel(p)} ({p.quantity} dispo)</option>)}
+                      </select>
+                    </div>
+                    <div><label className="text-xs text-gray-500">Qté</label><input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs" min={1} /></div>
+                    <div><label className="text-xs text-gray-500">Prix Unit. DA</label><input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs" /></div>
+                    <button onClick={() => removeItem(i)} className="pb-1 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
                   </div>
-                  <div><label className="text-xs text-gray-500">Qté</label><input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs" min={1} /></div>
-                  <div><label className="text-xs text-gray-500">Prix Unit. DA</label><input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))} className="w-full border rounded px-2 py-1.5 text-xs" /></div>
-                  <button onClick={() => removeItem(i)} className="pb-1 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  {item.productId > 0 && (
+                    <div className="mt-2 flex items-center gap-4 text-xs">
+                      <span className="text-gray-400">Coût: <span className="font-medium text-gray-600">{itemCost.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></span>
+                      <span className="text-gray-400">Revenu: <span className="font-medium text-gray-600">{itemRevenue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></span>
+                      <span className={`font-medium ${itemProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Bénéfice: {itemProfit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span>
+                    </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="border-t pt-3 space-y-1 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Sous-total</span><span className="font-medium">{subtotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
               <div className="flex justify-between items-center"><span className="text-gray-500">Remise (DA)</span><input type="number" value={form.discount} onChange={e => setForm(p => ({ ...p, discount: Number(e.target.value) }))} className="w-24 border rounded px-2 py-1 text-xs" /></div>
               <div className="flex justify-between items-center"><span className="text-gray-500">TVA (DA)</span><input type="number" value={form.tax} onChange={e => setForm(p => ({ ...p, tax: Number(e.target.value) }))} className="w-24 border rounded px-2 py-1 text-xs" /></div>
               <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total</span><span className="text-blue-700">{total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400">Coût total de production</span><span className="text-gray-600 font-medium">{totalCost.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
+              <div className="flex justify-between text-sm font-bold"><span className={totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>Bénéfice estimé</span><span className={totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{totalProfit.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</span></div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
