@@ -434,6 +434,7 @@ export const supplierOrdersApi = {
     paymentMethod?: string;
     notes?: string;
     createExpense?: boolean;
+    moneyBoxId?: number;
   }) => api.post<SupplierPayment>(`/suppliers/orders/${orderId}/payments`, data),
   deletePayment: (paymentId: number) => api.delete(`/suppliers/payments/${paymentId}`),
 };

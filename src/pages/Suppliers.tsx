@@ -6,14 +6,15 @@ import { Plus, Truck, Package, DollarSign, CreditCard, Edit2, Trash2, Eye, Downl
 import { PageLoading } from '../components/ui/Loading';
 import { PrintButton } from '../components/ui/PrintButton';
 import { printDocument } from '../lib/print';
-import { suppliersApi, supplierOrdersApi, rawMaterialsApi } from '../services/api';
+import { suppliersApi, supplierOrdersApi, rawMaterialsApi, moneyBoxApi } from '../services/api';
 import { 
   Supplier, 
   SupplierStatus, 
   SupplierOrder, 
   SupplierOrderStatus,
   SupplierPayment,
-  RawMaterial 
+  RawMaterial,
+  MoneyBox 
 } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -33,6 +34,7 @@ export default function Suppliers() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [materials, setMaterials] = useState<RawMaterial[]>([]);
+  const [moneyBoxes, setMoneyBoxes] = useState<MoneyBox[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   
@@ -72,14 +74,16 @@ export default function Suppliers() {
 
   const fetchData = async () => {
     try {
-      const [suppliersRes, ordersRes, materialsRes] = await Promise.all([
+      const [suppliersRes, ordersRes, materialsRes, boxesRes] = await Promise.all([
         suppliersApi.getAll(),
         supplierOrdersApi.getAll(),
         rawMaterialsApi.getAll(),
+        moneyBoxApi.getAll(),
       ]);
       setSuppliers(suppliersRes.data);
       setOrders(ordersRes.data);
       setMaterials(materialsRes.data);
+      setMoneyBoxes(boxesRes.data);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load data');
@@ -260,12 +264,13 @@ export default function Suppliers() {
         paymentMethod: formData.get('paymentMethod') as string || undefined,
         notes: formData.get('notes') as string || undefined,
         createExpense: formData.get('createExpense') === 'on',
+        moneyBoxId: formData.get('moneyBoxId') ? parseInt(formData.get('moneyBoxId') as string) : undefined,
       });
       
       toast.success('Payment recorded', { id: loadingToast });
       setShowPaymentForm(false);
       setPaymentOrderId(null);
-      fetchOrders();
+      fetchData();
       // Refresh selected order if viewing history
       if (selectedOrderForHistory) {
         const updatedOrder = await supplierOrdersApi.getById(selectedOrderForHistory.id);
@@ -286,6 +291,7 @@ export default function Suppliers() {
     const paymentMethod = formData.get('paymentMethod') as string || undefined;
     const notes = formData.get('notes') as string || undefined;
     const createExpense = formData.get('createExpense') === 'on';
+    const moneyBoxId = formData.get('moneyBoxId') ? parseInt(formData.get('moneyBoxId') as string) : undefined;
     
     // Get unpaid orders for this supplier, sorted oldest first
     const unpaidOrders = orders
@@ -310,6 +316,7 @@ export default function Suppliers() {
           paymentMethod,
           notes: notes ? `${notes} (Quick payment)` : 'Quick payment',
           createExpense: isFirstPayment && createExpense,
+          moneyBoxId: isFirstPayment ? moneyBoxId : undefined,
         });
         
         totalPayment -= payForThisOrder;
@@ -319,7 +326,7 @@ export default function Suppliers() {
       toast.success('Payment recorded and distributed across orders', { id: loadingToast });
       setShowQuickPayment(false);
       setQuickPaymentSupplierId('');
-      fetchOrders();
+      fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to record payment', { id: loadingToast });
     }
@@ -1346,6 +1353,12 @@ export default function Suppliers() {
                     Also record as expense
                   </label>
                 </div>
+                <Select label="Caisse (Money Box)" name="moneyBoxId">
+                  <option value="">Select a money box...</option>
+                  {moneyBoxes.map(box => (
+                    <option key={box.id} value={box.id}>{box.name} ({formatCurrency(box.currentBalance)})</option>
+                  ))}
+                </Select>
                 
                 <div className="flex justify-end gap-3">
                   <Button type="button" variant="outline" onClick={() => {
@@ -1569,6 +1582,12 @@ export default function Suppliers() {
                     <input type="checkbox" name="createExpense" id="quickCreateExpense" defaultChecked className="rounded border-gray-300" />
                     <label htmlFor="quickCreateExpense" className="text-sm text-gray-700">Also record as expense</label>
                   </div>
+                  <Select label="Caisse (Money Box)" name="moneyBoxId">
+                    <option value="">Select a money box...</option>
+                    {moneyBoxes.map(box => (
+                      <option key={box.id} value={box.id}>{box.name} ({formatCurrency(box.currentBalance)})</option>
+                    ))}
+                  </Select>
                 </>
               );
             })()}
