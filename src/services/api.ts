@@ -522,6 +522,9 @@ export const warehouseApi = {
   getInventoryById: (id: number) => api.get<FinishedProductInventory>(`/warehouses/inventory/${id}`),
   addInventory: (data: { modelId: number; warehouseId: number; sku: string; color?: string; quantity: number; productionCost?: number; batchNumber?: string; productionDate?: string }) =>
     api.post<FinishedProductInventory>('/warehouses/inventory', data),
+  updateInventory: (id: number, data: { productionCost?: number; color?: string; sku?: string }) =>
+    api.put<FinishedProductInventory>(`/warehouses/inventory/${id}`, data),
+  recalculateCosts: () => api.post('/warehouses/inventory/recalculate-costs'),
   adjustInventory: (id: number, quantity: number, notes?: string) =>
     api.patch<FinishedProductInventory>(`/warehouses/inventory/${id}/adjust`, { quantity, notes }),
   transfer: (data: { productId: number; fromWarehouseId: number; toWarehouseId: number; quantity: number; notes?: string }) =>
