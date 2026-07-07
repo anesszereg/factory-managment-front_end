@@ -74,6 +74,14 @@ export default function WarehousePage() {
     } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
   };
 
+  const handleRecalculateCosts = async () => {
+    try {
+      const res = await warehouseApi.recalculateCosts();
+      alert((res.data as any).message ?? 'Coûts recalculés');
+      loadAll();
+    } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
+  };
+
   const filtered = inventory.filter(p => {
     const s = search.toLowerCase();
     const name = p.model?.name ?? p.sku;
@@ -119,6 +127,7 @@ export default function WarehousePage() {
           <p className="text-sm text-gray-500 mt-0.5">Gestion des produits finis</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <button onClick={handleRecalculateCosts} className="flex items-center gap-2 px-4 py-2 border border-green-300 text-green-700 rounded-lg hover:bg-green-50 text-sm font-medium"><DollarSign size={16} /> Recalculer Coûts</button>
           <button onClick={() => setShowTransferForm(true)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"><ArrowRightLeft size={16} /> Transfert</button>
           <button onClick={() => setShowInvForm(true)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"><Package size={16} /> Ajouter Stock</button>
           <button onClick={() => { setEditingWH(null); setWhForm({ name: '', code: '', address: '', description: '' }); setShowWHForm(true); }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"><Plus size={16} /> Entrepôt</button>
