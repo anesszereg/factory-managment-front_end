@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Wallet, ArrowRightLeft, TrendingUp, TrendingDown, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Wallet, ArrowRightLeft, TrendingUp, TrendingDown, RefreshCw, Trash2, Edit2 } from 'lucide-react';
 import { moneyBoxApi, financialTransactionApi } from '../services/api';
 import type { MoneyBox, FinancialTransaction, DailyCashSummary } from '../types';
 import { TransactionType, TransactionCategory, MoneyBoxStatus } from '../types';
@@ -27,6 +27,8 @@ export default function MoneyBoxPage() {
   const [boxForm, setBoxForm] = useState({ name: '', description: '', currentBalance: 0, responsibleUser: '' });
   const [txForm, setTxForm] = useState({ moneyBoxId: 0, date: new Date().toISOString().split('T')[0], amount: 0, type: TransactionType.INCOME, category: TransactionCategory.MANUAL_INCOME, description: '', reference: '' });
   const [transferForm, setTransferForm] = useState({ fromId: 0, toId: 0, amount: 0, description: '' });
+  const [editingTx, setEditingTx] = useState<FinancialTransaction | null>(null);
+  const [editTxForm, setEditTxForm] = useState({ date: '', amount: 0, type: TransactionType.INCOME as string, category: '' as string, description: '', reference: '' });
 
   const loadAll = async () => {
     setLoading(true);
@@ -81,6 +83,35 @@ export default function MoneyBoxPage() {
   const handleDeleteBox = async (id: number) => {
     if (!confirm('Supprimer cette caisse?')) return;
     try { await moneyBoxApi.delete(id); loadAll(); } catch (e) { console.error(e); }
+  };
+
+  const handleEditTx = (tx: FinancialTransaction) => {
+    setEditingTx(tx);
+    setEditTxForm({
+      date: new Date(tx.date).toISOString().split('T')[0],
+      amount: tx.amount,
+      type: tx.type,
+      category: tx.category,
+      description: tx.description ?? '',
+      reference: tx.reference ?? '',
+    });
+    setFormError(null);
+  };
+
+  const handleUpdateTx = async () => {
+    if (!editingTx) return;
+    if (!editTxForm.amount || editTxForm.amount <= 0) { setFormError('Montant invalide.'); return; }
+    setFormError(null);
+    try {
+      await financialTransactionApi.update(editingTx.id, editTxForm);
+      setEditingTx(null);
+      loadAll();
+    } catch (e: any) { setFormError(e.response?.data?.error ?? e.message ?? 'Erreur serveur'); }
+  };
+
+  const handleDeleteTx = async (id: number) => {
+    if (!confirm('Supprimer cette transaction? Le solde de la caisse sera ajusté.')) return;
+    try { await financialTransactionApi.delete(id); loadAll(); } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
   };
 
   const totalBalance = boxes.reduce((s, b) => s + b.currentBalance, 0);
@@ -183,6 +214,7 @@ export default function MoneyBoxPage() {
                     <th className="text-left p-3 font-medium text-gray-600">Catégorie</th>
                     <th className="text-left p-3 font-medium text-gray-600">Description</th>
                     <th className="text-right p-3 font-medium text-gray-600">Montant</th>
+                    <th className="text-center p-3 font-medium text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -195,9 +227,15 @@ export default function MoneyBoxPage() {
                       <td className={`p-3 text-right font-medium ${tx.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
                         {tx.type === TransactionType.INCOME ? '+' : '-'}{tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA
                       </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleEditTx(tx)} className="p-1 text-gray-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                          <button onClick={() => handleDeleteTx(tx.id)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
-                  {transactions.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-gray-400">Aucune transaction</td></tr>}
+                  {transactions.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Aucune transaction</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -324,6 +362,37 @@ export default function MoneyBoxPage() {
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => { setShowTransferForm(false); setFormError(null); }} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handleTransfer} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Transférer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold mb-4">Modifier Transaction</h2>
+            {formError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">{formError}</p>}
+            <div className="space-y-3">
+              <div><label className="text-sm font-medium text-gray-700">Date</label><input type="date" value={editTxForm.date} onChange={e => setEditTxForm(p => ({ ...p, date: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Type</label>
+                <select value={editTxForm.type} onChange={e => setEditTxForm(p => ({ ...p, type: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value={TransactionType.INCOME}>Entrée</option>
+                  <option value={TransactionType.EXPENSE}>Sortie</option>
+                </select>
+              </div>
+              <div><label className="text-sm font-medium text-gray-700">Catégorie</label>
+                <select value={editTxForm.category} onChange={e => setEditTxForm(p => ({ ...p, category: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div><label className="text-sm font-medium text-gray-700">Montant (DA) *</label><input type="number" value={editTxForm.amount} onChange={e => setEditTxForm(p => ({ ...p, amount: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Description</label><input value={editTxForm.description} onChange={e => setEditTxForm(p => ({ ...p, description: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Référence</label><input value={editTxForm.reference} onChange={e => setEditTxForm(p => ({ ...p, reference: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button onClick={() => { setEditingTx(null); setFormError(null); }} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={handleUpdateTx} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Enregistrer</button>
             </div>
           </div>
         </div>

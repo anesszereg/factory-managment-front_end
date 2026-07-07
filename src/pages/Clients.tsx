@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Users, Search, Phone, Mail, Building2, Trash2, Eye, CreditCard, TrendingDown, MapPin, Calendar, Wallet, FileText, Receipt, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { clientApi, moneyBoxApi } from '../services/api';
+import { Plus, Users, Search, Phone, Mail, Building2, Trash2, Eye, CreditCard, TrendingDown, MapPin, Calendar, Wallet, FileText, Receipt, ArrowUpRight, ArrowDownRight, Edit2 } from 'lucide-react';
+import { clientApi, moneyBoxApi, financialTransactionApi } from '../services/api';
 import type { Client, ClientTransaction, MoneyBox } from '../types';
 import { ClientStatus } from '../types';
 
@@ -69,6 +69,37 @@ export default function ClientsPage() {
       await clientApi.update(c.id, { status: c.status === ClientStatus.ACTIVE ? ClientStatus.INACTIVE : ClientStatus.ACTIVE });
       loadAll();
     } catch (e) { console.error(e); }
+  };
+
+  const handleDeletePaymentTx = async (tx: ClientTransaction) => {
+    if (!selectedClient || !tx.referenceId) return;
+    if (!confirm('Supprimer ce paiement? Le solde client et la caisse seront ajustés.')) return;
+    try {
+      await financialTransactionApi.delete(tx.referenceId);
+      loadAll();
+      loadLedger(selectedClient.id);
+    } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
+  };
+
+  const [editPaymentTx, setEditPaymentTx] = useState<ClientTransaction | null>(null);
+  const [editPaymentForm, setEditPaymentForm] = useState({ amount: 0, description: '' });
+
+  const handleStartEditPayment = (tx: ClientTransaction) => {
+    setEditPaymentTx(tx);
+    setEditPaymentForm({ amount: tx.amount, description: tx.description ?? '' });
+  };
+
+  const handleUpdatePaymentTx = async () => {
+    if (!selectedClient || !editPaymentTx?.referenceId) return;
+    try {
+      await financialTransactionApi.update(editPaymentTx.referenceId, {
+        amount: editPaymentForm.amount,
+        description: editPaymentForm.description,
+      });
+      setEditPaymentTx(null);
+      loadAll();
+      loadLedger(selectedClient.id);
+    } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
   };
 
   const filtered = clients.filter(c =>
@@ -268,9 +299,17 @@ export default function ClientsPage() {
                         {tx.description && <p className="text-xs text-gray-500 mt-0.5">{tx.description}</p>}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-bold ${tx.type === 'PAYMENT' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'PAYMENT' ? '-' : '+'}{tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
-                      <p className="text-xs text-gray-400">Solde: {tx.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${tx.type === 'PAYMENT' ? 'text-green-600' : 'text-red-600'}`}>{tx.type === 'PAYMENT' ? '-' : '+'}{tx.amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                        <p className="text-xs text-gray-400">Solde: {tx.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} DA</p>
+                      </div>
+                      {tx.type === 'PAYMENT' && tx.referenceId && (
+                        <div className="flex gap-1">
+                          <button onClick={() => handleStartEditPayment(tx)} className="p-1 text-gray-400 hover:text-blue-500"><Edit2 size={13} /></button>
+                          <button onClick={() => handleDeletePaymentTx(tx)} className="p-1 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -395,6 +434,23 @@ export default function ClientsPage() {
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setShowPaymentForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handlePayment} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Payment Modal */}
+      {editPaymentTx && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="text-lg font-bold mb-4">Modifier Paiement</h2>
+            <div className="space-y-3">
+              <div><label className="text-sm font-medium text-gray-700">Montant (DA) *</label><input type="number" value={editPaymentForm.amount} onChange={e => setEditPaymentForm(p => ({ ...p, amount: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" min={0} /></div>
+              <div><label className="text-sm font-medium text-gray-700">Description</label><input value={editPaymentForm.description} onChange={e => setEditPaymentForm(p => ({ ...p, description: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button onClick={() => setEditPaymentTx(null)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={handleUpdatePaymentTx} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Enregistrer</button>
             </div>
           </div>
         </div>
