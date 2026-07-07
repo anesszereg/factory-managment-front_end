@@ -463,6 +463,9 @@ export const financialTransactionApi = {
   getById: (id: number) => api.get<FinancialTransaction>(`/financial-transactions/${id}`),
   create: (data: { moneyBoxId: number; date: string; amount: number; type: string; category: string; description?: string; reference?: string }) =>
     api.post<FinancialTransaction>('/financial-transactions', data),
+  update: (id: number, data: { date?: string; amount?: number; type?: string; category?: string; description?: string; reference?: string }) =>
+    api.put<FinancialTransaction>(`/financial-transactions/${id}`, data),
+  delete: (id: number) => api.delete(`/financial-transactions/${id}`),
   getDailySummary: (date?: string) => api.get<DailyCashSummary>('/financial-transactions/daily-summary', { params: { date } }),
   getMonthlyReport: (year: number, month: number) =>
     api.get<FinancialTransaction[]>('/financial-transactions/monthly-report', { params: { year, month } }),
@@ -489,6 +492,10 @@ export const clientApi = {
   getLedger: (id: number) => api.get<ClientTransaction[]>(`/clients/${id}/ledger`),
   recordPayment: (id: number, data: { moneyBoxId: number; orderId?: number; date: string; amount: number; paymentMethod: string; reference?: string; notes?: string }) =>
     api.post(`/clients/${id}/payments`, data),
+  updatePayment: (clientId: number, paymentId: number, data: { amount?: number; date?: string; paymentMethod?: string; reference?: string; notes?: string }) =>
+    api.put(`/clients/${clientId}/payments/${paymentId}`, data),
+  deletePayment: (clientId: number, paymentId: number) =>
+    api.delete(`/clients/${clientId}/payments/${paymentId}`),
 };
 
 export const salesApi = {

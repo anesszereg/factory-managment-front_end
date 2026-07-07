@@ -552,6 +552,8 @@ export interface ClientTransaction {
   amount: number;
   balance: number;
   description?: string;
+  referenceId?: number;
+  referenceType?: string;
   createdAt: string;
   updatedAt: string;
 }
