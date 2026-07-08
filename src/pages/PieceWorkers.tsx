@@ -1258,10 +1258,27 @@ export default function PieceWorkers() {
                           } catch { setWorkerPaymentTransactions([]); }
                         }}
                         className="flex-1 bg-amber-50 text-amber-700 hover:bg-amber-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
+                        title="Daily Receipts"
+                      >
+                        <Receipt className="h-3 w-3 mr-1" />
+                        Bons
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setPaymentHistoryWorker(worker);
+                          setPaymentHistoryTab('transactions');
+                          setShowPaymentHistory(true);
+                          try {
+                            const res = await dailyPieceReceiptsApi.getWorkerPayments(worker.id);
+                            setWorkerPaymentTransactions(res.data);
+                          } catch { setWorkerPaymentTransactions([]); }
+                        }}
+                        className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center"
                         title="Payment History"
                       >
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Histo.
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        Paiements
                       </button>
                       <button
                         onClick={(e) => {
@@ -2214,7 +2231,7 @@ export default function PieceWorkers() {
         <DialogContent className="max-w-2xl">
           <DialogHeader onClose={() => setShowPaymentHistory(false)}>
             <DialogTitle>
-              Historique des paiements — {paymentHistoryWorker?.firstName} {paymentHistoryWorker?.lastName}
+              Historique — {paymentHistoryWorker?.firstName} {paymentHistoryWorker?.lastName}
             </DialogTitle>
           </DialogHeader>
           {paymentHistoryWorker && (() => {
@@ -2255,7 +2272,7 @@ export default function PieceWorkers() {
                     onClick={() => setPaymentHistoryTab('transactions')}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${paymentHistoryTab === 'transactions' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                   >
-                    Transactions ({workerPaymentTransactions.length})
+                    Paiements ({workerPaymentTransactions.length})
                   </button>
                 </div>
 
