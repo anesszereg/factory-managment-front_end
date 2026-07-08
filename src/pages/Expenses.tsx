@@ -59,7 +59,7 @@ export function Expenses() {
           date: formData.get('date') as string,
           category: formData.get('category') as ExpenseCategory,
           amount: parseFloat(formData.get('amount') as string),
-          moneyBoxId,
+          moneyBoxId: selectedMoneyBoxId || 0,
           paymentMethod: formData.get('paymentMethod') as string || undefined,
           description: formData.get('description') as string || undefined,
         });
