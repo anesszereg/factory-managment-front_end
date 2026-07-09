@@ -55,7 +55,7 @@ export function Incomes() {
       date: formData.get('date') as string,
       source: formData.get('source') as string,
       amount: parseFloat(formData.get('amount') as string),
-      moneyBoxId: selectedMoneyBoxId || undefined,
+      moneyBoxId: editingIncome ? selectedMoneyBoxId || 0 : selectedMoneyBoxId || undefined,
       paymentMethod: formData.get('paymentMethod') as string || undefined,
       description: formData.get('description') as string || undefined,
     };

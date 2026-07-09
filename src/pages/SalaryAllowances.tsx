@@ -181,7 +181,8 @@ const SalaryAllowances: React.FC = () => {
         await salaryAllowancesApi.update(editingAllowance.id, {
           date: formData.date,
           amount: parseFloat(formData.amount),
-          description: formData.description
+          description: formData.description,
+          moneyBoxId: formMoneyBoxId || 0,
         });
         toast.success('Allowance updated', { id: loadingToast });
       } else {
@@ -210,6 +211,7 @@ const SalaryAllowances: React.FC = () => {
       amount: allowance.amount.toString(),
       description: allowance.description || ''
     });
+    setFormMoneyBoxId(allowance.moneyBoxId ?? 0);
     setShowForm(true);
   };
 
@@ -796,24 +798,22 @@ const SalaryAllowances: React.FC = () => {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={2} placeholder="Motif de l'acompte..." />
             </div>
-            {!editingAllowance && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
-                <select
-                  required
-                  value={formMoneyBoxId}
-                  onChange={(e) => setFormMoneyBoxId(parseInt(e.target.value) || 0)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Sélectionner une caisse...</option>
-                  {moneyBoxes.map(box => (
-                    <option key={box.id} value={box.id}>
-                      {box.name} — {formatCurrency(box.currentBalance)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Caisse (Money Box) *</label>
+              <select
+                required
+                value={formMoneyBoxId}
+                onChange={(e) => setFormMoneyBoxId(parseInt(e.target.value) || 0)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Sélectionner une caisse...</option>
+                {moneyBoxes.map(box => (
+                  <option key={box.id} value={box.id}>
+                    {box.name} — {formatCurrency(box.currentBalance)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" type="button" onClick={resetForm} className="flex-1">Annuler</Button>
               <Button type="submit" className="flex-1">
