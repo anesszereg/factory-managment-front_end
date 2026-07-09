@@ -312,6 +312,7 @@ export const salaryAllowancesApi = {
     date?: string;
     amount?: number;
     description?: string;
+    moneyBoxId?: number | null;
   }) => api.put<SalaryAllowance>(`/salary-allowances/${id}`, data),
   delete: (id: number) => api.delete(`/salary-allowances/${id}`),
   getSummary: (startDate?: string, endDate?: string) => 

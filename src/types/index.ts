@@ -258,6 +258,7 @@ export interface SalaryAllowance {
   date: string;
   amount: number;
   description?: string;
+  moneyBoxId?: number | null;
   createdAt: string;
   updatedAt: string;
   employee?: {
