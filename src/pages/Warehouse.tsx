@@ -3,8 +3,8 @@ import {
   Plus, Warehouse as WarehouseIcon, Package, ArrowRightLeft, Trash2,
   Search, Edit2, TrendingUp, AlertTriangle, DollarSign, BarChart2, Boxes,
 } from 'lucide-react';
-import { warehouseApi } from '../services/api';
-import type { Warehouse, FinishedProductInventory } from '../types';
+import { warehouseApi, furnitureModelsApi } from '../services/api';
+import type { Warehouse, FinishedProductInventory, FurnitureModel } from '../types';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n: number) => n.toLocaleString('fr-FR');
@@ -18,25 +18,31 @@ export default function WarehousePage() {
   const [tab, setTab] = useState<'analytics' | 'inventory' | 'warehouses'>('analytics');
   const [showWHForm, setShowWHForm] = useState(false);
   const [showInvForm, setShowInvForm] = useState(false);
+  const [showEditInvForm, setShowEditInvForm] = useState(false);
   const [showTransferForm, setShowTransferForm] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [models, setModels] = useState<FurnitureModel[]>([]);
   const [whForm, setWhForm] = useState({ name: '', code: '', address: '', description: '' });
   const [invForm, setInvForm] = useState({ modelId: 0, warehouseId: 0, sku: '', color: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
+  const [editInvForm, setEditInvForm] = useState({ sku: '', color: '', productionCost: 0, quantityAdjustment: 0, notes: '' });
+  const [editingInv, setEditingInv] = useState<FinishedProductInventory | null>(null);
   const [transferForm, setTransferForm] = useState({ productId: 0, fromWarehouseId: 0, toWarehouseId: 0, quantity: 1, notes: '' });
   const [editingWH, setEditingWH] = useState<Warehouse | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [w, i, all] = await Promise.all([
+      const [w, i, all, m] = await Promise.all([
         warehouseApi.getAll(),
         warehouseApi.getAllInventory(selectedWarehouse),
         warehouseApi.getAllInventory(undefined),
+        furnitureModelsApi.getAll(),
       ]);
       setWarehouses(w.data);
       setInventory(i.data);
       setAllInventory(all.data);
+      setModels(m.data);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -59,12 +65,51 @@ export default function WarehousePage() {
   };
 
   const handleAddInventory = async () => {
+    if (!invForm.modelId || !invForm.warehouseId || !invForm.sku || invForm.quantity <= 0) {
+      alert('Veuillez remplir le modèle, l\'entrepôt, le SKU et une quantité valide.');
+      return;
+    }
     try {
       await warehouseApi.addInventory(invForm);
       setShowInvForm(false);
       setInvForm({ modelId: 0, warehouseId: 0, sku: '', color: '', quantity: 1, productionCost: 0, batchNumber: '', productionDate: '' });
       loadAll();
     } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
+  };
+
+  const handleEditInventory = (item: FinishedProductInventory) => {
+    setEditingInv(item);
+    setEditInvForm({
+      sku: item.sku,
+      color: item.color ?? '',
+      productionCost: item.productionCost,
+      quantityAdjustment: 0,
+      notes: '',
+    });
+    setShowEditInvForm(true);
+  };
+
+  const handleUpdateInventory = async () => {
+    if (!editingInv) return;
+    try {
+      await warehouseApi.updateInventory(editingInv.id, {
+        sku: editInvForm.sku,
+        color: editInvForm.color,
+        productionCost: editInvForm.productionCost,
+      });
+      if (editInvForm.quantityAdjustment !== 0) {
+        await warehouseApi.adjustInventory(editingInv.id, editInvForm.quantityAdjustment, editInvForm.notes || undefined);
+      }
+      setShowEditInvForm(false);
+      setEditingInv(null);
+      setEditInvForm({ sku: '', color: '', productionCost: 0, quantityAdjustment: 0, notes: '' });
+      loadAll();
+    } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
+  };
+
+  const handleDeleteInventory = async (id: number) => {
+    if (!confirm('Supprimer ce produit de l\'inventaire ?')) return;
+    try { await warehouseApi.deleteInventory(id); loadAll(); } catch (e: any) { alert(e.response?.data?.error ?? e.message); }
   };
 
   const handleTransfer = async () => {
@@ -295,6 +340,7 @@ export default function WarehousePage() {
                       <th className="text-right p-3 font-medium text-gray-600 bg-purple-50">Coût/pièce</th>
                       <th className="text-right p-3 font-medium text-gray-600">Valeur</th>
                       <th className="text-center p-3 font-medium text-gray-600">Statut</th>
+                      <th className="text-center p-3 font-medium text-gray-600">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -313,9 +359,15 @@ export default function WarehousePage() {
                         </td>
                         <td className="p-3 text-right font-medium text-blue-600">{fmt(p.quantity * p.productionCost)} DA</td>
                         <td className="p-3 text-center"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.quantity > 10 ? 'bg-green-100 text-green-700' : p.quantity > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{p.quantity > 10 ? 'OK' : p.quantity > 0 ? 'Faible' : 'Épuisé'}</span></td>
+                        <td className="p-3 text-center">
+                          <div className="flex justify-center gap-1">
+                            <button onClick={() => handleEditInventory(p)} className="p-1 text-gray-400 hover:text-blue-500" title="Modifier"><Edit2 size={14} /></button>
+                            <button onClick={() => handleDeleteInventory(p.id)} className="p-1 text-gray-400 hover:text-red-500" title="Supprimer"><Trash2 size={14} /></button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
-                    {filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-gray-400">Aucun produit</td></tr>}
+                    {filtered.length === 0 && <tr><td colSpan={10} className="text-center py-8 text-gray-400">Aucun produit</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -390,8 +442,24 @@ export default function WarehousePage() {
                   {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </select>
               </div>
+              <div><label className="text-sm font-medium text-gray-700">Modèle *</label>
+                <select value={invForm.modelId} onChange={e => {
+                  const modelId = Number(e.target.value);
+                  const model = models.find(m => m.id === modelId);
+                  const skuBase = model ? `${model.name}-${model.size}${invForm.color ? '-' + invForm.color.toUpperCase() : ''}`.replace(/\s+/g, '-').toUpperCase() : invForm.sku;
+                  setInvForm(p => ({ ...p, modelId, sku: skuBase }));
+                }} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  <option value={0}>Sélectionner...</option>
+                  {models.map(m => <option key={m.id} value={m.id}>{m.name} — {m.size}</option>)}
+                </select>
+              </div>
               <div><label className="text-sm font-medium text-gray-700">SKU *</label><input value={invForm.sku} onChange={e => setInvForm(p => ({ ...p, sku: e.target.value }))} placeholder="ex: PROD-001" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
-              <div><label className="text-sm font-medium text-gray-700">Couleur de peinture</label><input value={invForm.color} onChange={e => setInvForm(p => ({ ...p, color: e.target.value }))} placeholder="ex: Blanc, Noir, Gris..." className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Couleur de peinture</label><input value={invForm.color} onChange={e => {
+                const color = e.target.value;
+                const model = models.find(m => m.id === invForm.modelId);
+                const skuBase = model ? `${model.name}-${model.size}${color ? '-' + color.toUpperCase() : ''}`.replace(/\s+/g, '-').toUpperCase() : invForm.sku;
+                setInvForm(p => ({ ...p, color, sku: skuBase }));
+              }} placeholder="ex: Blanc, Noir, Gris..." className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div><label className="text-sm font-medium text-gray-700">Quantité *</label><input type="number" value={invForm.quantity} onChange={e => setInvForm(p => ({ ...p, quantity: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" min={1} /></div>
               <div><label className="text-sm font-medium text-gray-700">Coût/pièce de production (DA)</label><input type="number" value={invForm.productionCost} onChange={e => setInvForm(p => ({ ...p, productionCost: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
               <div><label className="text-sm font-medium text-gray-700">N° de lot</label><input value={invForm.batchNumber} onChange={e => setInvForm(p => ({ ...p, batchNumber: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
@@ -400,6 +468,27 @@ export default function WarehousePage() {
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setShowInvForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
               <button onClick={handleAddInventory} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Ajouter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Inventory Modal */}
+      {showEditInvForm && editingInv && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-lg font-bold mb-4">Modifier Stock</h2>
+            <p className="text-sm text-gray-500 mb-4">{editingInv.model?.name ?? editingInv.sku} — Qté actuelle : {editingInv.quantity}</p>
+            <div className="space-y-3">
+              <div><label className="text-sm font-medium text-gray-700">SKU</label><input value={editInvForm.sku} onChange={e => setEditInvForm(p => ({ ...p, sku: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Couleur de peinture</label><input value={editInvForm.color} onChange={e => setEditInvForm(p => ({ ...p, color: e.target.value }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Coût/pièce de production (DA)</label><input type="number" value={editInvForm.productionCost} onChange={e => setEditInvForm(p => ({ ...p, productionCost: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Ajustement de quantité (+/-)</label><input type="number" value={editInvForm.quantityAdjustment} onChange={e => setEditInvForm(p => ({ ...p, quantityAdjustment: Number(e.target.value) }))} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="text-sm font-medium text-gray-700">Notes de l'ajustement</label><input value={editInvForm.notes} onChange={e => setEditInvForm(p => ({ ...p, notes: e.target.value }))} placeholder="ex: Inventaire physique, correction..." className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" /></div>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button onClick={() => setShowEditInvForm(false)} className="px-4 py-2 border rounded-lg text-sm">Annuler</button>
+              <button onClick={handleUpdateInventory} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Enregistrer</button>
             </div>
           </div>
         </div>

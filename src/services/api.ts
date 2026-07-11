@@ -528,6 +528,7 @@ export const warehouseApi = {
     api.post<FinishedProductInventory>('/warehouses/inventory', data),
   updateInventory: (id: number, data: { productionCost?: number; color?: string; sku?: string }) =>
     api.put<FinishedProductInventory>(`/warehouses/inventory/${id}`, data),
+  deleteInventory: (id: number) => api.delete(`/warehouses/inventory/${id}`),
   recalculateCosts: () => api.post('/warehouses/inventory/recalculate-costs'),
   adjustInventory: (id: number, quantity: number, notes?: string) =>
     api.patch<FinishedProductInventory>(`/warehouses/inventory/${id}/adjust`, { quantity, notes }),
