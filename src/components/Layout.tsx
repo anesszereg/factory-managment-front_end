@@ -18,7 +18,8 @@ import {
   Banknote,
   ShoppingCart,
   UserSquare,
-  Warehouse
+  Warehouse,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +55,7 @@ export function Layout({ children }: LayoutProps) {
     { name: 'Employés', href: '/employees', icon: Users, section: 'RH' },
     { name: 'Façonniers', href: '/piece-workers', icon: Hammer, section: 'RH' },
     { name: 'Avances Salaires', href: '/salary-allowances', icon: Wallet, section: 'RH' },
+    { name: 'Fiche de Paie', href: '/fiche-de-paie', icon: FileText, section: 'RH' },
   ];
 
   return (

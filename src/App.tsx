@@ -18,6 +18,7 @@ const MoneyBox = React.lazy(() => import('./pages/MoneyBox'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const Sales = React.lazy(() => import('./pages/Sales'));
 const WarehousePage = React.lazy(() => import('./pages/Warehouse'));
+const FicheDePaie = React.lazy(() => import('./pages/FicheDePaie'));
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
             <Route path="/clients" element={<Clients />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/warehouse" element={<WarehousePage />} />
+            <Route path="/fiche-de-paie" element={<FicheDePaie />} />
           </Routes>
         </Suspense>
       </Layout>
