@@ -292,35 +292,41 @@ const FicheDePaie: React.FC = () => {
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="border border-gray-300 px-2 py-1 text-left">Désignation</th>
-                    <th className="border border-gray-300 px-2 py-1 text-center">Taux / Qté</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center">Date</th>
                     <th className="border border-gray-300 px-2 py-1 text-right">Montant (DA)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="border border-gray-300 px-2 py-1">
-                      Salaire de l'employé(e) – {getMonthName(selectedMonth)}
+                    <td className="border border-gray-300 px-2 py-1 font-semibold">
+                      Salaire de base
                     </td>
-                    <td className="border border-gray-300 px-2 py-1 text-center">1</td>
+                    <td className="border border-gray-300 px-2 py-1 text-center">
+                      {format(new Date(selectedMonth + '-01'), 'dd/MM/yyyy')}
+                    </td>
                     <td className="border border-gray-300 px-2 py-1 text-right">
                       {formatCurrency(selectedEmployee.monthlySalary)}
                     </td>
                   </tr>
                   
-                  {allowances.map((allowance, index) => (
+                  {allowances
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map((allowance) => (
                     <tr key={allowance.id}>
                       <td className="border border-gray-300 px-2 py-1">
-                        {allowance.description || `Prime ${index + 1}`}
+                        {allowance.description || `Allocation du ${format(new Date(allowance.date), 'dd/MM/yyyy')}`}
                       </td>
-                      <td className="border border-gray-300 px-2 py-1 text-center">1</td>
+                      <td className="border border-gray-300 px-2 py-1 text-center">
+                        {format(new Date(allowance.date), 'dd/MM/yyyy')}
+                      </td>
                       <td className="border border-gray-300 px-2 py-1 text-right">
                         {formatCurrency(allowance.amount)}
                       </td>
                     </tr>
                   ))}
 
-                  {/* Empty rows for future additions */}
-                  {[...Array(Math.max(0, 10 - allowances.length))].map((_, index) => (
+                  {/* Empty rows for additional entries */}
+                  {[...Array(Math.max(0, 12 - allowances.length))].map((_, index) => (
                     <tr key={`empty-${index}`}>
                       <td className="border border-gray-300 px-2 py-1">&nbsp;</td>
                       <td className="border border-gray-300 px-2 py-1 text-center">&nbsp;</td>
@@ -335,9 +341,15 @@ const FicheDePaie: React.FC = () => {
             <div className="flex justify-end mb-4">
               <div className="w-48">
                 <div className="flex justify-between py-1 border-b text-sm">
-                  <span className="font-semibold">Salaire brut :</span>
+                  <span className="font-semibold">Salaire de base :</span>
                   <span className="font-semibold">
-                    {formatCurrency(selectedEmployee.monthlySalary + calculateTotalAllowances())}
+                    {formatCurrency(selectedEmployee.monthlySalary)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b text-sm">
+                  <span className="font-semibold">Total allocations :</span>
+                  <span className="font-semibold">
+                    {formatCurrency(calculateTotalAllowances())}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b-2 border-gray-800">

@@ -789,6 +789,9 @@ export default function PieceWorkers() {
   const printReceipt = (receipt: DailyPieceReceipt) => {
     const worker = workers.find(w => w.id === receipt.pieceWorkerId);
     const remaining = receipt.totalAmount - receipt.paidAmount;
+    const totalWorkerBalance = receipts
+      .filter(r => r.pieceWorkerId === receipt.pieceWorkerId && r.paymentStatus !== PaymentStatus.PAID)
+      .reduce((sum, r) => sum + (r.totalAmount - r.paidAmount), 0);
     const itemsHtml = receipt.items?.map(item => `
       <tr>
         <td>${item.itemName}</td>
@@ -829,8 +832,8 @@ export default function PieceWorkers() {
         </table>
         <div class="sep"></div>
         <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
-        <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
-        <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
+        <div class="row"><span>Payé sur ce bon</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
+        <div class="row red"><span>Reste</span><span>${formatCurrency(totalWorkerBalance)}</span></div>
         ${receipt.notes ? `<div style="font-size:10px;margin-top:1mm;color:#555">Note: ${receipt.notes}</div>` : ''}
         <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
       </body></html>`);
@@ -916,7 +919,7 @@ export default function PieceWorkers() {
               </table>
               <div class="sep"></div>
               <div class="row total"><span>TOTAL</span><span>${formatCurrency(receipt.totalAmount)}</span></div>
-              <div class="row"><span>Payé</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
+              <div class="row"><span>Payé sur ce bon</span><span>${formatCurrency(receipt.paidAmount)}</span></div>
               <div class="row red"><span>Reste</span><span>${formatCurrency(remaining)}</span></div>
               ${receipt.notes ? `<div style="font-size:8px;margin-top:0.5mm;color:#555">Note: ${receipt.notes}</div>` : ''}
               <div class="footer"><p>Merci pour votre confiance</p><p>Imprimé le: ${format(new Date(), 'dd/MM/yyyy HH:mm')}</p></div>
