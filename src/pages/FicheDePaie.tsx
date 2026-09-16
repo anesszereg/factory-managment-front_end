@@ -75,7 +75,6 @@ const FicheDePaie: React.FC = () => {
 
   const getMonthName = (monthStr: string) => {
     const [year, month] = monthStr.split('-').map(Number);
-    const date = new Date(year, month - 1);
     const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     return `${monthNames[month - 1]} ${year}`;

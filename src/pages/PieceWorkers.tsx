@@ -788,7 +788,6 @@ export default function PieceWorkers() {
 
   const printReceipt = (receipt: DailyPieceReceipt) => {
     const worker = workers.find(w => w.id === receipt.pieceWorkerId);
-    const remaining = receipt.totalAmount - receipt.paidAmount;
     const totalWorkerBalance = receipts
       .filter(r => r.pieceWorkerId === receipt.pieceWorkerId && r.paymentStatus !== PaymentStatus.PAID)
       .reduce((sum, r) => sum + (r.totalAmount - r.paidAmount), 0);
