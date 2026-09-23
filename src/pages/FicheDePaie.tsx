@@ -340,21 +340,21 @@ const FicheDePaie: React.FC = () => {
             <div className="flex justify-end mb-4">
               <div className="w-48">
                 <div className="flex justify-between py-1 border-b text-sm">
-                  <span className="font-semibold">Salaire de base :</span>
+                  <span className="font-semibold">Salaire mensuel :</span>
                   <span className="font-semibold">
                     {formatCurrency(selectedEmployee.monthlySalary)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b text-sm">
-                  <span className="font-semibold">Total allocations :</span>
-                  <span className="font-semibold">
-                    {formatCurrency(calculateTotalAllowances())}
+                  <span className="font-semibold">Total avances / allocations :</span>
+                  <span className="font-semibold text-red-600">
+                    - {formatCurrency(calculateTotalAllowances())}
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-b-2 border-gray-800">
-                  <span className="font-bold">NET À PAYER :</span>
+                  <span className="font-bold">RESTE À PAYER :</span>
                   <span className="font-bold">
-                    {formatCurrency(selectedEmployee.monthlySalary + calculateTotalAllowances())}
+                    {formatCurrency(Math.max(0, selectedEmployee.monthlySalary - calculateTotalAllowances()))}
                   </span>
                 </div>
               </div>
@@ -366,7 +366,7 @@ const FicheDePaie: React.FC = () => {
                 Arrêtée la présente fiche de paie au montant de : 
                 <span className="font-semibold border-b inline-block mx-2 min-w-32">
                   {new Intl.NumberFormat('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    .format(selectedEmployee.monthlySalary + calculateTotalAllowances())} dinars algériens
+                    .format(Math.max(0, selectedEmployee.monthlySalary - calculateTotalAllowances()))} dinars algériens
                 </span>
               </p>
               
