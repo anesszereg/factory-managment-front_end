@@ -318,8 +318,8 @@ const FicheDePaie: React.FC = () => {
                       <td className="border border-gray-300 px-2 py-1 text-center">
                         {format(new Date(allowance.date), 'dd/MM/yyyy')}
                       </td>
-                      <td className="border border-gray-300 px-2 py-1 text-right">
-                        {formatCurrency(allowance.amount)}
+                      <td className="border border-gray-300 px-2 py-1 text-right text-red-600">
+                        - {formatCurrency(allowance.amount)}
                       </td>
                     </tr>
                   ))}
